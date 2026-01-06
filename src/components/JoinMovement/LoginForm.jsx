@@ -189,7 +189,7 @@ const LoginForm = () => {
             ) : (
               <div className="space-y-3">
                 <div className="group">
-                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                     <Phone className="w-4 h-4" />
                     <span>Téléphone</span>
                   </label>
@@ -205,8 +205,8 @@ const LoginForm = () => {
                         name="phoneCode"
                         value={formData.phoneCode}
                         onChange={handlePhoneCodeChange}
-                        className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent text-center font-mono"
-                        placeholder="+XX"
+                        className="w-full py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent text-center font-mono"
+                        placeholder="+229"
                         required
                         maxLength={5} // + suivi de max 4 chiffres
                       />
@@ -220,18 +220,10 @@ const LoginForm = () => {
                         value={formData.phoneNumber}
                         onChange={handleChange}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent"
-                        placeholder="Ex: 61 23 45 67"
+                        placeholder="Ex: 01 61 23 45 67"
                         required
                       />
                     </div>
-                  </div>
-                  
-                  {/* Exemples en placeholder-like */}
-                  <div className="mt-2 text-xs text-gray-500">
-                    <span className="text-gray-400">Exemples :</span>{' '}
-                    <span className="font-mono bg-gray-100 px-2 py-0.5 rounded mr-2">+229 61 23 45 67</span>
-                    <span className="font-mono bg-gray-100 px-2 py-0.5 rounded mr-2">+33 6 12 34 56 78</span>
-                    <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">+1 234 567 8900</span>
                   </div>
                   
                   {/* Affichage du numéro complet */}
