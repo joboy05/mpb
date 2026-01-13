@@ -9,6 +9,12 @@ import NotFound404 from './pages/NotFound404';
 import NewsList from './pages/NewsList';
 import NewsDetail from './pages/NewsDetail';
 import RegisterPage from './pages/RegisterPage';
+import PrivateRoute from './components/Auth/PrivateRoute';
+import AdminRoute from './components/Auth/AdminRoutes';
+import AdminDashboard from './pages/admin/Dashboard';
+import CreateContent from './pages/admin/CreateContent';
+import UserDashboard from './pages/users/Dashboard';
+import ManagePosts from './pages/admin/ManagePost';
 // Créez un composant LoginPage ou supprimez cette route si vous ne l'avez pas encore
 // import LoginPage from './pages/LoginPage';
 
@@ -20,9 +26,45 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/rejoindre" element={<JoinMovement />} />
         <Route path="/verify-member" element={<VerifyMember />} />
-        <Route path="/carte-membre" element={<MemberCard />} />
         <Route path="/actualites" element={<NewsList />} />
         <Route path="/actualites/:slug" element={<NewsDetail />} />
+<Route path="/users/dashboard" element={
+  <PrivateRoute>
+    <UserDashboard />
+  </PrivateRoute>
+} />
+<Route path="/carte-membre" element={
+  <PrivateRoute>
+    <MemberCard />
+  </PrivateRoute>
+} />
+<Route path="/admin/dashboard" element={
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
+        } />
+        
+        {/* Autres routes admin (à créer plus tard) */}
+        <Route path="/admin/membres" element={
+          <AdminRoute>
+            <div>Gestion des membres (à implémenter)</div>
+          </AdminRoute>
+        } />
+        <Route path="/admin/evenements" element={
+          <AdminRoute>
+            <CreateContent />
+          </AdminRoute>
+        } />
+        <Route path="/admin/posts" element={
+          <AdminRoute>
+            <ManagePosts />
+          </AdminRoute>
+        } />
+<Route path="/profil" element={
+  <PrivateRoute>
+    {/* <Profil /> */}
+  </PrivateRoute>
+} />
         <Route path="*" element={<NotFound404 />} />
         {/* Vous pouvez ajouter d'autres routes ici plus tard */}
         {/* <Route path="/about" element={<About />} />
