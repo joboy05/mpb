@@ -56,75 +56,76 @@ const DocumentsSection = () => {
             </p>
           </div>
         </ScrollAnimationWrapper>
-{/* Grille des documents */}
-<div className="flex justify-center mb-16">
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl">
-    {documents.map((doc, index) => (
-      <ScrollAnimationWrapper key={index} delay={index * 100}>
-        <div 
-          className="bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden border border-gray-200 h-full"
-        >
-          {/* En-tête de la carte */}
-          <div className="bg-gradient-to-r from-[#003366] to-[#004488] p-8 relative overflow-hidden h-48">
-            {/* Effet de brillance */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-            
-            <div className="relative h-full flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <div className="w-16 h-16 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
-                  {doc.icon}
+
+        {/* Grille des documents */}
+        <div className="flex justify-center mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl">
+            {documents.map((doc, index) => (
+              <ScrollAnimationWrapper key={index} delay={index * 100}>
+                <div 
+                  className="bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden border border-gray-200 h-full"
+                >
+                  {/* En-tête de la carte */}
+                  <div className="bg-gradient-to-r from-[#003366] to-[#004488] p-8 relative overflow-hidden h-48">
+                    {/* Effet de brillance */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                    
+                    <div className="relative h-full flex flex-col justify-between">
+                      <div className="flex items-center justify-between">
+                        <div className="w-16 h-16 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                          {doc.icon}
+                        </div>
+                        <span className="text-white text-sm font-semibold bg-white/30 px-4 py-2 rounded-lg backdrop-blur-sm">
+                          {doc.category}
+                        </span>
+                      </div>
+                      
+                      <h3 className="text-2xl font-bold text-white mb-2">
+                        {doc.title}
+                      </h3>
+                    </div>
+                  </div>
+                  
+                  {/* Contenu */}
+                  <div className="p-6">
+                    <p className="text-gray-600 mb-6 leading-relaxed min-h-[72px]">
+                      {doc.description}
+                    </p>
+                    
+                    {/* Métadonnées */}
+                    <div className="flex items-center justify-between mb-6 pb-6 border-b border-gray-100">
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-3 h-3 rounded-full animate-pulse bg-blue-500"></div>
+                          <span className="text-sm text-gray-600 font-medium">{doc.pages}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-3 h-3 rounded-full animate-pulse bg-green-500"></div>
+                          <span className="text-sm text-gray-600 font-medium">{doc.size}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="text-4xl font-black opacity-50 text-gray-100">
+                        PDF
+                      </div>
+                    </div>
+                    
+                    {/* Boutons */}
+                    <div className="flex gap-3">
+                      <a 
+                        href={doc.downloadUrl}
+                        className="flex-1 bg-gradient-to-r from-gray-800 to-gray-900 text-white px-4 py-3 rounded-lg font-semibold hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 group"
+                      >
+                        <Download className="w-5 h-5 group-hover:animate-bounce" />
+                        <span>Télécharger</span>
+                      </a>
+                    </div>
+                  </div>
                 </div>
-                <span className="text-white text-sm font-semibold bg-white/30 px-4 py-2 rounded-lg backdrop-blur-sm">
-                  {doc.category}
-                </span>
-              </div>
-              
-              <h3 className="text-2xl font-bold text-white mb-2">
-                {doc.title}
-              </h3>
-            </div>
-          </div>
-          
-          {/* Contenu */}
-          <div className="p-6">
-            <p className="text-gray-600 mb-6 leading-relaxed min-h-[72px]">
-              {doc.description}
-            </p>
-            
-            {/* Métadonnées */}
-            <div className="flex items-center justify-between mb-6 pb-6 border-b border-gray-100">
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full animate-pulse bg-blue-500"></div>
-                  <span className="text-sm text-gray-600 font-medium">{doc.pages}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full animate-pulse bg-green-500"></div>
-                  <span className="text-sm text-gray-600 font-medium">{doc.size}</span>
-                </div>
-              </div>
-              
-              <div className="text-4xl font-black opacity-50 text-gray-100">
-                PDF
-              </div>
-            </div>
-            
-            {/* Boutons */}
-            <div className="flex gap-3">
-              <a 
-                href={doc.downloadUrl}
-                className="flex-1 bg-gradient-to-r from-gray-800 to-gray-900 text-white px-4 py-3 rounded-lg font-semibold hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-3 group"
-              >
-                <Download className="w-5 h-5 group-hover:animate-bounce" />
-                <span>Télécharger</span>
-              </a>
-            </div>
+              </ScrollAnimationWrapper>
+            ))}
           </div>
         </div>
-      </ScrollAnimationWrapper>
-    ))}
-  </div>
-</div>
 
         {/* Section dédiée au Livre Blanc */}
         <ScrollAnimationWrapper delay={400}>
@@ -179,7 +180,7 @@ const DocumentsSection = () => {
                     </div>
                   </div>
                   
-                  <div className="flex flex-wrap gap-4">
+                  <div className="flex flex-wrap gap-4 justify-center md:justify-start">
                     <a 
                       href="#"
                       className="bg-gradient-to-r from-[#FFD700] to-[#FFAA00] text-[#003366] px-8 py-4 rounded-xl font-bold text-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex items-center gap-3"
@@ -246,9 +247,9 @@ const DocumentsSection = () => {
         {/* Archive */}
         <ScrollAnimationWrapper delay={600}>
           <div className="mb-16">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h3 className="text-2xl font-bold text-[#003366] mb-2 flex items-center gap-3">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 text-center md:text-left">
+              <div className="mb-6 md:mb-0">
+                <h3 className="text-2xl font-bold text-[#003366] mb-2 flex items-center justify-center md:justify-start gap-3">
                   <Shield className="w-6 h-6" />
                   Archives des Publications
                 </h3>
@@ -256,7 +257,7 @@ const DocumentsSection = () => {
                   Explorez nos documents historiques et rapports annuels
                 </p>
               </div>
-              <button className="flex items-center gap-2 text-[#003366] font-semibold hover:text-[#0055AA] transition-colors group">
+              <button className="flex items-center justify-center md:justify-start gap-2 text-[#003366] font-semibold hover:text-[#0055AA] transition-colors group mx-auto md:mx-0">
                 <span>Voir toutes les archives</span>
                 <ChevronRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
               </button>
@@ -264,43 +265,43 @@ const DocumentsSection = () => {
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {[
-  { 
-    year: "2023", 
-    count: "12 documents", 
-    color: "bg-gradient-to-br from-[#003366]/10 to-[#0055AA]/20", 
-    icon: <FileText className="w-8 h-8 text-[#003366]" />,
-    iconBg: "bg-gradient-to-br from-[#0055AA]/20 to-[#003366]/30"
-  },
-  { 
-    year: "2022", 
-    count: "8 documents", 
-    color: "bg-gradient-to-br from-[#003366]/10 to-[#FFD700]/20", 
-    icon: <Archive className="w-8 h-8 text-[#003366]" />,
-    iconBg: "bg-gradient-to-br from-[#FFD700]/20 to-[#FFAA00]/20"
-  },
-  { 
-    year: "2021", 
-    count: "6 documents", 
-    color: "bg-gradient-to-br from-[#003366]/10 to-[#00AAFF]/20", 
-    icon: <FolderOpen className="w-8 h-8 text-[#003366]" />,
-    iconBg: "bg-gradient-to-br from-[#00AAFF]/20 to-[#003366]/30"
-  },
-  { 
-    year: "2020", 
-    count: "4 documents", 
-    color: "bg-gradient-to-br from-[#003366]/10 to-[#FFAA00]/20", 
-    icon: <FolderArchive className="w-8 h-8 text-[#003366]" />,
-    iconBg: "bg-gradient-to-br from-[#FFAA00]/20 to-[#FFD700]/20"
-  },
-].map((archive, idx) => (
+                { 
+                  year: "2023", 
+                  count: "12 documents", 
+                  color: "bg-gradient-to-br from-[#003366]/10 to-[#0055AA]/20", 
+                  icon: <FileText className="w-8 h-8 text-[#003366]" />,
+                  iconBg: "bg-gradient-to-br from-[#0055AA]/20 to-[#003366]/30"
+                },
+                { 
+                  year: "2022", 
+                  count: "8 documents", 
+                  color: "bg-gradient-to-br from-[#003366]/10 to-[#FFD700]/20", 
+                  icon: <Archive className="w-8 h-8 text-[#003366]" />,
+                  iconBg: "bg-gradient-to-br from-[#FFD700]/20 to-[#FFAA00]/20"
+                },
+                { 
+                  year: "2021", 
+                  count: "6 documents", 
+                  color: "bg-gradient-to-br from-[#003366]/10 to-[#00AAFF]/20", 
+                  icon: <FolderOpen className="w-8 h-8 text-[#003366]" />,
+                  iconBg: "bg-gradient-to-br from-[#00AAFF]/20 to-[#003366]/30"
+                },
+                { 
+                  year: "2020", 
+                  count: "4 documents", 
+                  color: "bg-gradient-to-br from-[#003366]/10 to-[#FFAA00]/20", 
+                  icon: <FolderArchive className="w-8 h-8 text-[#003366]" />,
+                  iconBg: "bg-gradient-to-br from-[#FFAA00]/20 to-[#FFD700]/20"
+                },
+              ].map((archive, idx) => (
                 <div 
                   key={idx}
-                  className={`${archive.color} rounded-2xl p-6 hover:shadow-xl transition-all duration-500 cursor-pointer transform hover:-translate-y-2 border border-white/50`}
+                  className={`${archive.color} rounded-2xl p-6 hover:shadow-xl transition-all duration-500 cursor-pointer transform hover:-translate-y-2 border border-white/50 text-center`}
                 >
-                  <div className="text-4xl mb-3">{archive.icon}</div>
+                  <div className="flex justify-center mb-3">{archive.icon}</div>
                   <div className="text-3xl font-bold text-gray-900 mb-2">{archive.year}</div>
                   <div className="text-sm text-gray-600">{archive.count}</div>
-                  <div className="w-8 h-1 bg-gray-300 rounded-full mt-4"></div>
+                  <div className="w-8 h-1 bg-gray-300 rounded-full mt-4 mx-auto"></div>
                 </div>
               ))}
             </div>
@@ -325,17 +326,17 @@ const DocumentsSection = () => {
             </div>
             
             <div className="relative">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-                <div className="md:w-2/3">
+              <div className="flex flex-col md:flex-row items-center justify-center md:justify-between gap-8">
+                <div className="md:w-2/3 text-center md:text-left">
                   <h3 className="text-3xl md:text-4xl font-bold mb-6 bg-gradient-to-r from-white to-yellow-200 bg-clip-text text-transparent">
                     Rejoignez le Mouvement Patriotique
                   </h3>
-                  <p className="text-white/90 mb-8 text-lg">
+                  <p className="text-white/90 mb-8 text-lg max-w-2xl mx-auto md:mx-0">
                     Téléchargez notre Livre Blanc 2024 et découvrez comment participer 
                     à la construction d'un Bénin prospère et souverain.
                   </p>
                   
-                  <div className="flex flex-wrap gap-4">
+                  <div className="flex flex-wrap gap-4 justify-center md:justify-start">
                     <a 
                       href="https://docs.google.com/forms/"
                       target="_blank"
@@ -356,7 +357,7 @@ const DocumentsSection = () => {
                   </div>
                 </div>
                 
-                <div className="md:w-1/3">
+                <div className="md:w-1/3 text-center">
                   <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 text-center border border-white/20">
                     <div className="text-5xl font-black mb-4">100%</div>
                     <div className="text-xl font-semibold mb-2">Gratuit & Accessible</div>

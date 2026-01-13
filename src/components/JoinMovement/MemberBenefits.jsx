@@ -25,8 +25,6 @@ const MemberBenefits = () => {
               <h3 className="font-bold text-[#003366] mb-2 text-lg">Carte de membre numérique</h3>
               <p className="text-gray-600">Obtenez votre carte officielle avec QR Code permanent</p>
               <div className="mt-2 inline-flex items-center gap-1 text-sm text-yellow-600 font-medium">
-                <span>✔</span>
-                <span>Valable à vie</span>
               </div>
             </div>
           </div>

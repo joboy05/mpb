@@ -22,7 +22,7 @@ const AboutSection = () => {
             {/* Badge décoratif */}
             <div className="absolute -bottom-6 -right-6 bg-yellow-400 text-blue-900 px-6 py-4 rounded-2xl shadow-xl max-w-[80%] md:max-w-none md:px-8">
               <div className="text-xl md:text-3xl font-bold">Romuald Wadagni</div>
-              <div className="text-xs md:text-sm font-semibold">Candidat à l’élection Présidentielle</div>
+              <div className="text-xs md:text-sm font-semibold">Candidat à l'élection Présidentielle</div>
             </div>
           </div>
           
@@ -80,8 +80,8 @@ const AboutSection = () => {
               </div>
             </div>
             
-            {/* Bouton d'action */}
-            <div className="mt-10">
+            {/* Bouton d'action - Centré sur mobile, aligné à gauche sur desktop */}
+            <div className="mt-10 flex justify-center md:justify-start">
               <a 
                 href="#contact"
                 className="inline-flex items-center gap-3 bg-gradient-to-r from-blue-900 to-blue-800 text-white px-8 py-4 rounded-full font-bold hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
