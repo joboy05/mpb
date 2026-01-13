@@ -1,10 +1,10 @@
-// components/JoinMovement/MemberForm.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, ArrowRight, Check, Phone, Calendar } from 'lucide-react';
+import { UserPlus, ArrowRight, Check, Phone, Loader } from 'lucide-react';
 import CountrySelect from './CountrySelect';
 import BeninLocation from './BeninLocation';
 import YearSelect from './YearSelect';
+import { authService } from '../../services/api'; // Import du service Axios
 
 const MemberForm = () => {
   const navigate = useNavigate();
@@ -14,10 +14,10 @@ const MemberForm = () => {
     nom: '',
     prenom: '',
     email: '',
-    phoneCode: '+229', // Par défaut Bénin
+    phoneCode: '+229',
     telephone: '',
-    birthYear: '', // Changé de 'age' à 'birthYear'
-    pays: 'Bénin', // Par défaut Bénin
+    birthYear: '',
+    pays: 'Bénin',
     department: '',
     commune: '',
     disponibilite: '',
@@ -27,20 +27,26 @@ const MemberForm = () => {
     confirmPassword: ''
   });
 
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const handleCountryChange = (countryName) => {
     setFormData(prev => ({
       ...prev,
       pays: countryName,
-      department: '', // Réinitialiser si pays change
-      commune: '' // Réinitialiser si pays change
+      department: '',
+      commune: ''
     }));
   };
 
@@ -55,7 +61,7 @@ const MemberForm = () => {
     setFormData(prev => ({
       ...prev,
       department,
-      commune: '' // Réinitialiser la commune quand le département change
+      commune: ''
     }));
   };
 
@@ -66,82 +72,107 @@ const MemberForm = () => {
     }));
   };
 
-  // Calculer l'âge à partir de l'année de naissance
   const calculateAge = (birthYear) => {
     if (!birthYear) return null;
     return currentYear - parseInt(birthYear);
   };
 
-  const generateMembershipNumber = () => {
-    const prefix = 'MPB-';
-    const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-    const year = new Date().getFullYear();
-    return `${prefix}${year}-${random}`;
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const validateForm = () => {
+    const newErrors = {};
     
-    // Validation de l'année de naissance
+    if (!formData.nom.trim()) newErrors.nom = 'Le nom est requis';
+    else if (formData.nom.trim().length < 2) newErrors.nom = 'Minimum 2 caractères';
+    
+    if (!formData.prenom.trim()) newErrors.prenom = 'Le prénom est requis';
+    else if (formData.prenom.trim().length < 2) newErrors.prenom = 'Minimum 2 caractères';
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email.trim()) newErrors.email = 'L\'email est requis';
+    else if (!emailRegex.test(formData.email)) newErrors.email = 'Format d\'email invalide';
+    
+    if (!formData.telephone.trim()) newErrors.telephone = 'Le téléphone est requis';
+    
     const birthYear = parseInt(formData.birthYear);
     const age = calculateAge(formData.birthYear);
+    if (!formData.birthYear) newErrors.birthYear = 'L\'année de naissance est requise';
+    else if (isNaN(birthYear) || birthYear < 1900 || birthYear > currentYear) {
+      newErrors.birthYear = `Année invalide (1900-${currentYear})`;
+    } else if (age < 16) newErrors.birthYear = 'Minimum 16 ans';
     
-    if (isNaN(birthYear) || birthYear < 1900 || birthYear > currentYear) {
-      alert(`Veuillez entrer une année de naissance valide (1900-${currentYear})`);
-      return;
+    if (formData.pays === 'Bénin') {
+      if (!formData.department) newErrors.department = 'Le département est requis';
+      if (!formData.commune) newErrors.commune = 'La commune est requise';
+    } else if (!formData.commune.trim()) newErrors.commune = 'La ville/région est requise';
+    
+    if (!formData.profession) newErrors.profession = 'La profession est requise';
+    if (!formData.disponibilite) newErrors.disponibilite = 'La disponibilité est requise';
+    
+    if (!formData.password) newErrors.password = 'Le mot de passe est requis';
+    else if (formData.password.length < 8) newErrors.password = 'Minimum 8 caractères';
+    
+    if (!formData.confirmPassword) newErrors.confirmPassword = 'Confirmation requise';
+    else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Les mots de passe ne correspondent pas';
     }
     
-    if (age < 16) {
-      alert('Vous devez avoir au moins 16 ans pour vous inscrire');
-      return;
-    }
+    if (!formData.motivation.trim()) newErrors.motivation = 'La motivation est requise';
+    else if (formData.motivation.trim().length < 20) newErrors.motivation = 'Minimum 20 caractères';
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
-    // Validation des mots de passe
-    if (formData.password !== formData.confirmPassword) {
-      alert('Les mots de passe ne correspondent pas');
-      return;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+    
+    setLoading(true);
+    
+    try {
+      // Préparer les données pour l'API
+      const memberData = {
+        nom: formData.nom.trim(),
+        prenom: formData.prenom.trim(),
+        email: formData.email.trim().toLowerCase(),
+        phoneCode: formData.phoneCode,
+        telephone: formData.telephone.trim(),
+        birthYear: parseInt(formData.birthYear),
+        pays: formData.pays,
+        department: formData.department,
+        commune: formData.commune,
+        profession: formData.profession,
+        disponibilite: formData.disponibilite,
+        motivation: formData.motivation.trim(),
+        password: formData.password
+      };
+      
+      // Appel API avec Axios
+      const result = await authService.register(memberData);
+      
+      // Sauvegarder le token et les données
+      authService.saveAuthData(result.token, result.member);
+      
+      // Message de succès
+      alert(`🎉 Inscription réussie !\nBienvenue ${result.member.prenom} !\nNuméro de membre: ${result.member.membershipNumber}`);
+      
+      // Rediriger
+      navigate('/carte-membre', { state: { memberData: result.member } });
+      
+    } catch (error) {
+      console.error('Erreur inscription:', error);
+      
+      // Gérer les erreurs spécifiques d'Axios
+      if (error.message.includes('déjà utilisé') || error.message?.includes('email')) {
+        setErrors({ email: 'Cet email est déjà utilisé' });
+      } else if (error.message) {
+        alert(error.message || "Erreur d'inscription");
+      } else {
+        alert('Erreur de connexion au serveur. Veuillez réessayer.');
+      }
+    } finally {
+      setLoading(false);
     }
-
-    if (formData.password.length < 8) {
-      alert('Le mot de passe doit contenir au moins 8 caractères');
-      return;
-    }
-
-    // Validation spécifique pour le Bénin
-    if (formData.pays === 'Bénin' && (!formData.department || !formData.commune)) {
-      alert('Veuillez sélectionner votre département et commune pour le Bénin');
-      return;
-    }
-
-    // Générer un ID de membre unique
-    const memberId = 'MPB' + Date.now() + Math.random().toString(36).substr(2, 9).toUpperCase();
-    
-    // Créer un objet avec toutes les données du membre
-    const memberData = {
-      ...formData,
-      age: age, // Ajouter l'âge calculé
-      memberId,
-      dateInscription: new Date().toISOString(),
-      status: 'Actif',
-      membershipNumber: generateMembershipNumber(),
-      subscriptionDate: new Date().toLocaleDateString('fr-FR'),
-      permanent: true
-    };
-    
-    // Sauvegarder dans localStorage
-    const members = JSON.parse(localStorage.getItem('mpb_members') || '[]');
-    
-    if (members.some(member => member.email === formData.email)) {
-      alert('Cet email est déjà utilisé. Veuillez vous connecter ou utiliser un autre email.');
-      return;
-    }
-    
-    members.push(memberData);
-    localStorage.setItem('mpb_members', JSON.stringify(members));
-    localStorage.setItem('current_member', JSON.stringify(memberData));
-    
-    // Rediriger
-    navigate('/carte-membre', { state: { memberData } });
   };
 
   const disponibilites = [
@@ -156,15 +187,6 @@ const MemberForm = () => {
     'Étudiant', 'Employé', 'Fonctionnaire', 'Entrepreneur', 'Commerçant',
     'Agriculteur', 'Artisan', 'Profession libérale', 'Retraité', 'Sans emploi', 'Autre'
   ];
-
-  // Générer les années de naissance possibles (1900 à présent - 16 ans)
-  const birthYears = [];
-  const minBirthYear = 1900;
-  const maxBirthYear = currentYear - 16;
-  
-  for (let year = maxBirthYear; year >= minBirthYear; year--) {
-    birthYears.push(year);
-  }
 
   return (
     <div className="bg-gradient-to-b from-white to-gray-50 rounded-2xl shadow-xl p-8 border border-gray-100 relative overflow-hidden">
@@ -189,94 +211,73 @@ const MemberForm = () => {
           {/* Champs nom/prénom */}
           <div className="grid md:grid-cols-2 gap-4">
             <div className="group">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nom
-              </label>
-              <input
-                type="text"
-                name="nom"
-                value={formData.nom}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent group-hover:border-[#003366]/50 transition-colors"
-                required
-                placeholder="Votre nom"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nom *</label>
+              <input type="text" name="nom" value={formData.nom} onChange={handleChange}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
+                  errors.nom ? 'border-red-300' : 'border-gray-300'
+                }`} placeholder="Votre nom" />
+              {errors.nom && <p className="mt-1 text-sm text-red-600">{errors.nom}</p>}
             </div>
             
             <div className="group">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Prénom
-              </label>
-              <input
-                type="text"
-                name="prenom"
-                value={formData.prenom}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent group-hover:border-[#003366]/50 transition-colors"
-                required
-                placeholder="Votre prénom"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-2">Prénom *</label>
+              <input type="text" name="prenom" value={formData.prenom} onChange={handleChange}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
+                  errors.prenom ? 'border-red-300' : 'border-gray-300'
+                }`} placeholder="Votre prénom" />
+              {errors.prenom && <p className="mt-1 text-sm text-red-600">{errors.prenom}</p>}
             </div>
           </div>
 
           {/* Email */}
           <div className="group">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent group-hover:border-[#003366]/50 transition-colors"
-              required
-              placeholder="exemple@email.com"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+            <input type="email" name="email" value={formData.email} onChange={handleChange}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
+                errors.email ? 'border-red-300' : 'border-gray-300'
+              }`} placeholder="exemple@email.com" />
+            {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
           </div>
 
-          {/* Pays avec recherche intelligente */}
+          {/* Pays */}
           <CountrySelect
             value={formData.pays}
             onChange={handleCountryChange}
             onPhoneCodeChange={handlePhoneCodeChange}
           />
 
-          {/* Téléphone avec code pays dynamique */}
+          {/* Téléphone */}
           <div className="group">
             <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-              <Phone className="w-4 h-4" />
-              <span>Téléphone</span>
+              <Phone className="w-4 h-4" /> <span>Téléphone *</span>
             </label>
             <div className="flex">
               <div className="inline-flex items-center px-4 border border-r-0 border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 rounded-l-lg font-medium min-w-[100px]">
                 {formData.phoneCode}
               </div>
-              <input
-                type="tel"
-                name="telephone"
-                value={formData.telephone}
-                onChange={handleChange}
+              <input type="tel" name="telephone" value={formData.telephone} onChange={handleChange}
                 placeholder="XX XX XX XX"
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent"
-                required
-              />
+                className={`flex-1 px-4 py-3 border rounded-r-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent ${
+                  errors.telephone ? 'border-red-300' : 'border-gray-300'
+                }`} />
             </div>
+            {errors.telephone && <p className="mt-1 text-sm text-red-600">{errors.telephone}</p>}
           </div>
 
           {/* Année de naissance */}
           <div className="group">
-<div className="group">
-  <YearSelect
-    value={formData.birthYear}
-    onChange={(year) => setFormData(prev => ({ ...prev, birthYear: year }))}
-    label="Année de naissance"
-    minAge={18}
-  />
-</div>
+            <YearSelect
+              value={formData.birthYear}
+              onChange={(year) => {
+                setFormData(prev => ({ ...prev, birthYear: year }));
+                if (errors.birthYear) setErrors(prev => ({ ...prev, birthYear: '' }));
+              }}
+              label="Année de naissance *"
+              minAge={18}
+            />
+            {errors.birthYear && <p className="mt-1 text-sm text-red-600">{errors.birthYear}</p>}
             
-            {/* Afficher l'âge calculé */}
-            {formData.birthYear && (
+            {formData.birthYear && !errors.birthYear && (
               <div className="mt-2 text-sm text-gray-600">
                 <span className="font-medium">Âge : </span>
                 <span className="text-[#003366] font-semibold">
@@ -291,122 +292,95 @@ const MemberForm = () => {
             )}
           </div>
 
-          {/* Si pays = Bénin, afficher départements et communes */}
+          {/* Localisation Bénin */}
           {formData.pays === 'Bénin' && (
             <BeninLocation
               department={formData.department}
               commune={formData.commune}
               onDepartmentChange={handleDepartmentChange}
               onCommuneChange={handleCommuneChange}
+              errors={errors}
             />
           )}
 
-          {/* Si autre pays, afficher un champ texte simple pour la ville */}
+          {/* Localisation autre pays */}
           {formData.pays && formData.pays !== 'Bénin' && (
             <div className="group">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ville/Région
-              </label>
-              <input
-                type="text"
-                name="commune"
-                value={formData.commune}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent group-hover:border-[#003366]/50 transition-colors"
-                required
-                placeholder="Votre ville ou région"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-2">Ville/Région *</label>
+              <input type="text" name="commune" value={formData.commune} onChange={handleChange}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
+                  errors.commune ? 'border-red-300' : 'border-gray-300'
+                }`} placeholder="Votre ville ou région" />
+              {errors.commune && <p className="mt-1 text-sm text-red-600">{errors.commune}</p>}
             </div>
           )}
 
           {/* Profession et disponibilité */}
           <div className="grid md:grid-cols-2 gap-4">
             <div className="group">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Profession
-              </label>
-              <select
-                name="profession"
-                value={formData.profession}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent group-hover:border-[#003366]/50 transition-colors"
-                required
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-2">Profession *</label>
+              <select name="profession" value={formData.profession} onChange={handleChange}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
+                  errors.profession ? 'border-red-300' : 'border-gray-300'
+                }`}>
                 <option value="">Sélectionnez...</option>
                 {professions.map(prof => (
                   <option key={prof} value={prof}>{prof}</option>
                 ))}
               </select>
+              {errors.profession && <p className="mt-1 text-sm text-red-600">{errors.profession}</p>}
             </div>
             
             <div className="group">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Disponibilité
-              </label>
-              <select
-                name="disponibilite"
-                value={formData.disponibilite}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent group-hover:border-[#003366]/50 transition-colors"
-                required
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-2">Disponibilité *</label>
+              <select name="disponibilite" value={formData.disponibilite} onChange={handleChange}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
+                  errors.disponibilite ? 'border-red-300' : 'border-gray-300'
+                }`}>
                 <option value="">Choisir...</option>
                 {disponibilites.map(dispo => (
                   <option key={dispo} value={dispo}>{dispo}</option>
                 ))}
               </select>
+              {errors.disponibilite && <p className="mt-1 text-sm text-red-600">{errors.disponibilite}</p>}
             </div>
           </div>
 
           {/* Mots de passe */}
           <div className="grid md:grid-cols-2 gap-4">
             <div className="group">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mot de passe
-              </label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent group-hover:border-[#003366]/50 transition-colors"
-                required
-                placeholder="Minimum 8 caractères"
-                minLength="8"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-2">Mot de passe *</label>
+              <input type="password" name="password" value={formData.password} onChange={handleChange}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
+                  errors.password ? 'border-red-300' : 'border-gray-300'
+                }`} placeholder="Minimum 8 caractères" />
+              {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
             </div>
             
             <div className="group">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Confirmer le mot de passe
-              </label>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent group-hover:border-[#003366]/50 transition-colors"
-                required
-                placeholder="Retapez votre mot de passe"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-2">Confirmation *</label>
+              <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
+                  errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
+                }`} placeholder="Retapez votre mot de passe" />
+              {errors.confirmPassword && <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>}
             </div>
           </div>
 
           {/* Motivation */}
           <div className="group">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Motivation
-            </label>
-            <textarea
-              name="motivation"
-              value={formData.motivation}
-              onChange={handleChange}
-              rows="3"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent group-hover:border-[#003366]/50 transition-colors resize-none"
-              placeholder="Pourquoi souhaitez-vous rejoindre le Mouvement Patriotique du Bénin ?"
-              required
-            />
-            <p className="mt-1 text-sm text-gray-500">Minimum 20 caractères</p>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Motivation *</label>
+            <textarea name="motivation" value={formData.motivation} onChange={handleChange} rows="4"
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent resize-none transition-colors ${
+                errors.motivation ? 'border-red-300' : 'border-gray-300'
+              }`} placeholder="Pourquoi souhaitez-vous rejoindre le Mouvement Patriotique du Bénin ?" />
+            <div className="flex justify-between items-center mt-1">
+              <p className="text-sm text-gray-500">Minimum 20 caractères</p>
+              <p className={`text-sm ${
+                formData.motivation.length < 20 ? 'text-red-600' : 'text-green-600'
+              }`}>{formData.motivation.length}/20</p>
+            </div>
+            {errors.motivation && <p className="mt-1 text-sm text-red-600">{errors.motivation}</p>}
           </div>
 
           {/* Confidentialité */}
@@ -426,30 +400,33 @@ const MemberForm = () => {
 
           {/* Conditions */}
           <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <input
-              type="checkbox"
-              id="conditions"
-              className="w-5 h-5 text-[#003366] border-gray-300 rounded focus:ring-[#003366] mt-1"
-              required
-            />
+            <input type="checkbox" id="conditions"
+              className="w-5 h-5 text-[#003366] border-gray-300 rounded focus:ring-[#003366] mt-1 flex-shrink-0" required />
             <label htmlFor="conditions" className="text-sm text-gray-700">
               J'accepte les{' '}
               <a href="#" className="text-[#003366] font-semibold hover:underline">conditions d'utilisation</a>
               {' '}et la{' '}
               <a href="#" className="text-[#003366] font-semibold hover:underline">politique de confidentialité</a>
-              {' '}du Mouvement Patriotique du Bénin
+              {' '}du Mouvement Patriotique du Bénin *
             </label>
           </div>
 
           {/* Bouton de soumission */}
-          <button
-            type="submit"
-            className="w-full group relative bg-gradient-to-r from-[#003366] via-[#004488] to-[#003366] text-white py-4 rounded-xl font-bold text-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
-          >
+          <button type="submit" disabled={loading}
+            className="w-full group relative bg-gradient-to-r from-[#003366] via-[#004488] to-[#003366] text-white py-4 rounded-xl font-bold text-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
             <span className="relative flex items-center justify-center gap-3">
-              Valider mon inscription
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+              {loading ? (
+                <>
+                  <Loader className="w-5 h-5 animate-spin" />
+                  Inscription en cours...
+                </>
+              ) : (
+                <>
+                  Valider mon inscription
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+                </>
+              )}
             </span>
           </button>
 

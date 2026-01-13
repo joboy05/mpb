@@ -1,25 +1,22 @@
-// components/JoinMovement/LoginForm.jsx
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Mail, Lock, AlertCircle, Phone, Globe } from 'lucide-react';
+import { authService } from '../../services/api'; // Import du service Axios
 
 const LoginForm = () => {
   const [formData, setFormData] = useState({
-    identifier: '', // Peut être email ou numéro
-    phoneCode: '+', // Commence avec juste +
-    phoneNumber: '', // Numéro sans code
+    identifier: '', // Email
+    phoneCode: '+', 
+    phoneNumber: '',
     password: ''
   });
-  const [loginType, setLoginType] = useState('email'); // 'email' ou 'phone'
+  const [loginType, setLoginType] = useState('email');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleLoginTypeChange = (type) => {
@@ -33,85 +30,94 @@ const LoginForm = () => {
     setError('');
   };
 
-  // Gestion spéciale pour le code pays
   const handlePhoneCodeChange = (e) => {
     let value = e.target.value;
-    
-    // Toujours commencer par +
-    if (!value.startsWith('+')) {
-      value = '+' + value.replace(/[^0-9]/g, '');
-    }
-    
-    // Ne pas permettre de supprimer le +
-    if (value === '') {
-      value = '+';
-    }
-    
-    // N'autoriser que + suivi de chiffres (max 4 chiffres)
+    if (!value.startsWith('+')) value = '+' + value.replace(/[^0-9]/g, '');
+    if (value === '') value = '+';
     const numbersOnly = value.slice(1).replace(/[^0-9]/g, '');
     if (numbersOnly.length <= 4) {
-      setFormData(prev => ({
-        ...prev,
-        phoneCode: '+' + numbersOnly
-      }));
+      setFormData(prev => ({ ...prev, phoneCode: '+' + numbersOnly }));
     }
   };
 
-  const validatePhoneCode = (code) => {
-    // Valider que c'est un code téléphonique valide (+ suivi de 1-4 chiffres)
-    return /^\+\d{1,4}$/.test(code);
-  };
+  const validatePhoneCode = (code) => /^\+\d{1,4}$/.test(code);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  e.preventDefault();
+  setError('');
+  setLoading(true);
 
-    setTimeout(() => {
-      const members = JSON.parse(localStorage.getItem('mpb_members') || '[]');
-      let member;
-
-      if (loginType === 'email') {
-        // Connexion par email
-        member = members.find(m => 
-          m.email === formData.identifier && 
-          m.password === formData.password
-        );
-      } else {
-        // Connexion par téléphone
-        // Valider le code pays
-        if (!validatePhoneCode(formData.phoneCode)) {
-          setError('Code pays invalide. Format: +XX ou +XXX');
-          setLoading(false);
-          return;
-        }
-
-        // Valider le numéro
-        if (!formData.phoneNumber.trim()) {
-          setError('Veuillez entrer votre numéro de téléphone');
-          setLoading(false);
-          return;
-        }
-
-        // Nettoyer le numéro
-        const cleanNumber = formData.phoneNumber.replace(/[\s\-\.]/g, '');
-        const fullPhone = formData.phoneCode + cleanNumber;
-
-        member = members.find(m => {
-          const memberPhone = (m.phoneCode || '+229') + (m.telephone || '').replace(/[\s\-\.]/g, '');
-          return memberPhone === fullPhone && m.password === formData.password;
-        });
+  try {
+    let loginData;
+    
+    if (loginType === 'email') {
+      // Validation email
+      if (!formData.identifier.trim()) {
+        setError('Veuillez entrer votre email');
+        setLoading(false);
+        return;
+      }
+      
+      loginData = {
+        identifier: formData.identifier.trim().toLowerCase(),
+        password: formData.password,
+        loginType: 'email'
+      };
+    } else {
+      // Validation téléphone
+      if (!validatePhoneCode(formData.phoneCode)) {
+        setError('Code pays invalide. Format: +XX ou +XXX');
+        setLoading(false);
+        return;
       }
 
-      if (member) {
-        localStorage.setItem('current_member', JSON.stringify(member));
-        window.location.href = '/carte-membre';
-      } else {
-        setError('Identifiants incorrects');
+      if (!formData.phoneNumber.trim()) {
+        setError('Veuillez entrer votre numéro de téléphone');
+        setLoading(false);
+        return;
       }
-      setLoading(false);
-    }, 1000);
-  };
+
+      loginData = {
+        phoneCode: formData.phoneCode,
+        phoneNumber: formData.phoneNumber,
+        password: formData.password,
+        loginType: 'phone'
+      };
+    }
+
+    // Appel API avec Axios
+    const response = await authService.login(loginData);
+    
+    if (response.success) {
+      // Sauvegarder le token et les données
+      authService.saveAuthData(response.token, response.member);
+      
+      // Message de bienvenue personnalisé selon le rôle
+      const welcomeMessage = response.member.role === 'admin' 
+        ? `👑 Bienvenue Administrateur ${response.member.prenom} !`
+        : `✅ Bienvenue ${response.member.prenom} !`;
+      
+      alert(welcomeMessage);
+      
+      // REDIRECTION SPÉCIFIQUE SELON LE RÔLE
+      if (response.member.role === 'admin') {
+        // Admin → Tableau de bord admin
+        window.location.href = '/admin/dashboard';
+      } else {
+        // Membre normal → Carte de membre
+        window.location.href = '/users/dashboard';
+      }
+    } else {
+      setError(response.message || 'Identifiants incorrects');
+    }
+  } catch (error) {
+    console.error('Erreur de connexion:', error);
+    // Gérer l'erreur correctement
+    setError(error.message || 'Erreur de connexion au serveur');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="bg-gradient-to-b from-white to-gray-50 rounded-2xl shadow-xl p-8 border border-gray-100 relative overflow-hidden">
@@ -131,28 +137,20 @@ const LoginForm = () => {
         
         {/* Sélecteur type de connexion */}
         <div className="flex gap-3 mb-6">
-          <button
-            type="button"
-            onClick={() => handleLoginTypeChange('email')}
+          <button type="button" onClick={() => handleLoginTypeChange('email')}
             className={`flex-1 py-3 px-4 rounded-lg border transition-all duration-300 ${loginType === 'email' 
               ? 'bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 text-blue-700 shadow-sm' 
-              : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'}`}
-          >
+              : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'}`}>
             <div className="flex items-center justify-center gap-2">
-              <Mail className="w-4 h-4" />
-              <span>Email</span>
+              <Mail className="w-4 h-4" /><span>Email</span>
             </div>
           </button>
-          <button
-            type="button"
-            onClick={() => handleLoginTypeChange('phone')}
+          <button type="button" onClick={() => handleLoginTypeChange('phone')}
             className={`flex-1 py-3 px-4 rounded-lg border transition-all duration-300 ${loginType === 'phone' 
               ? 'bg-gradient-to-r from-green-50 to-green-100 border-green-200 text-green-700 shadow-sm' 
-              : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'}`}
-          >
+              : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'}`}>
             <div className="flex items-center justify-center gap-2">
-              <Phone className="w-4 h-4" />
-              <span>Téléphone</span>
+              <Phone className="w-4 h-4" /><span>Téléphone</span>
             </div>
           </button>
         </div>
@@ -169,64 +167,40 @@ const LoginForm = () => {
           )}
 
           <div className="space-y-4">
-            {/* Champ identifiant selon le type */}
+            {/* Champ selon type */}
             {loginType === 'email' ? (
               <div className="group">
                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  <span>Email</span>
+                  <Mail className="w-4 h-4" /><span>Email</span>
                 </label>
-                <input
-                  type="email"
-                  name="identifier"
-                  value={formData.identifier}
-                  onChange={handleChange}
+                <input type="email" name="identifier" value={formData.identifier} onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent group-hover:border-[#003366]/50 transition-colors"
-                  required
-                  placeholder="Ex: jean.dupont@gmail.com"
-                />
+                  required placeholder="Ex: jean.dupont@gmail.com" />
               </div>
             ) : (
               <div className="space-y-3">
                 <div className="group">
                   <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                    <Phone className="w-4 h-4" />
-                    <span>Téléphone</span>
+                    <Phone className="w-4 h-4" /><span>Téléphone</span>
                   </label>
                   
                   <div className="flex gap-2 items-start">
-                    {/* Code pays - champ plus petit */}
                     <div className="relative w-28 flex-shrink-0">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Globe className="h-5 w-5 text-gray-400" />
                       </div>
-                      <input
-                        type="text"
-                        name="phoneCode"
-                        value={formData.phoneCode}
-                        onChange={handlePhoneCodeChange}
+                      <input type="text" name="phoneCode" value={formData.phoneCode} onChange={handlePhoneCodeChange}
                         className="w-full py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent text-center font-mono"
-                        placeholder="+229"
-                        required
-                        maxLength={5} // + suivi de max 4 chiffres
-                      />
+                        placeholder="+229" required maxLength={5} />
                     </div>
                     
-                    {/* Numéro de téléphone - champ principal */}
                     <div className="flex-1">
-                      <input
-                        type="tel"
-                        name="phoneNumber"
-                        value={formData.phoneNumber}
-                        onChange={handleChange}
+                      <input type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent"
-                        placeholder="Ex: 01 61 23 45 67"
-                        required
-                      />
+                        placeholder="Ex: 01 61 23 45 67" required />
                     </div>
                   </div>
                   
-                  {/* Affichage du numéro complet */}
                   {formData.phoneCode && formData.phoneNumber && validatePhoneCode(formData.phoneCode) && (
                     <div className="mt-2 text-sm text-gray-600">
                       <span className="font-medium">Numéro complet : </span>
@@ -236,7 +210,6 @@ const LoginForm = () => {
                     </div>
                   )}
                   
-                  {/* Validation du format */}
                   {formData.phoneCode && !validatePhoneCode(formData.phoneCode) && (
                     <div className="mt-2 p-2 bg-gradient-to-r from-yellow-50 to-amber-50 rounded border border-yellow-200">
                       <p className="text-sm text-yellow-700">
@@ -251,44 +224,29 @@ const LoginForm = () => {
             {/* Mot de passe */}
             <div className="group">
               <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <Lock className="w-4 h-4" />
-                <span>Mot de passe</span>
+                <Lock className="w-4 h-4" /><span>Mot de passe</span>
               </label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
+              <input type="password" name="password" value={formData.password} onChange={handleChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent group-hover:border-[#003366]/50 transition-colors"
-                required
-                placeholder="Votre mot de passe"
-              />
+                required placeholder="Votre mot de passe" />
             </div>
           </div>
 
-          {/* Options supplémentaires */}
+          {/* Options */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="remember"
-                className="w-4 h-4 text-[#003366] border-gray-300 rounded focus:ring-[#003366]"
-              />
-              <label htmlFor="remember" className="text-sm text-gray-700">
-                Se souvenir de moi
-              </label>
+              <input type="checkbox" id="remember"
+                className="w-4 h-4 text-[#003366] border-gray-300 rounded focus:ring-[#003366]" />
+              <label htmlFor="remember" className="text-sm text-gray-700">Se souvenir de moi</label>
             </div>
             <a href="#" className="text-sm text-[#003366] font-semibold hover:underline">
               Mot de passe oublié ?
             </a>
           </div>
 
-          {/* Bouton de connexion */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full group relative bg-gradient-to-r from-[#003366] via-[#004488] to-[#003366] text-white py-4 rounded-xl font-bold text-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          {/* Bouton */}
+          <button type="submit" disabled={loading}
+            className="w-full group relative bg-gradient-to-r from-[#003366] via-[#004488] to-[#003366] text-white py-4 rounded-xl font-bold text-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
             <span className="relative flex items-center justify-center gap-3">
               {loading ? (
