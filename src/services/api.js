@@ -1,9 +1,15 @@
+// services/api.js - VERSION CORRIGÉE
 import axios from 'axios';
 
-// Configuration de base
-const API_BASE_URL = 'http://localhost:5000/api';
+// Utilise ton .env
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-// Instance Axios avec intercepteurs
+console.log('🔧 Configuration API:', { 
+  VITE_API_URL: import.meta.env.VITE_API_URL,
+  API_BASE_URL 
+});
+
+// Instance Axios unique
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
@@ -12,7 +18,7 @@ const apiClient = axios.create({
   }
 });
 
-// Intercepteur pour ajouter le token automatiquement
+// Intercepteur pour ajouter le token
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('mpb_token');
@@ -30,11 +36,9 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Gérer les erreurs 401 (non autorisé)
     if (error.response?.status === 401) {
       localStorage.removeItem('mpb_token');
       localStorage.removeItem('mpb_member');
-      // Rediriger vers login si pas déjà dessus
       if (!window.location.pathname.includes('/login')) {
         window.location.href = '/login';
       }
@@ -43,29 +47,28 @@ apiClient.interceptors.response.use(
   }
 );
 
-// Service d'authentification
+// ============ SERVICE AUTH ============
 export const authService = {
-  // Connexion
   login: async (loginData) => {
     try {
       const response = await apiClient.post('/auth/login', loginData);
       return response.data;
     } catch (error) {
+      console.error('❌ Erreur login:', error.response?.data || error.message);
       throw error.response?.data || { message: 'Erreur de connexion' };
     }
   },
 
-  // Inscription
   register: async (memberData) => {
     try {
       const response = await apiClient.post('/auth/register', memberData);
       return response.data;
     } catch (error) {
+      console.error('❌ Erreur inscription:', error);
       throw error.response?.data || { message: "Erreur d'inscription" };
     }
   },
 
-  // Vérifier le token
   verifyToken: async () => {
     try {
       const response = await apiClient.get('/auth/verify');
@@ -75,34 +78,29 @@ export const authService = {
     }
   },
 
-  // Déconnexion
   logout: () => {
     localStorage.removeItem('mpb_token');
     localStorage.removeItem('mpb_member');
     localStorage.removeItem('current_member');
   },
 
-  // Vérifier si connecté
   isAuthenticated: () => {
     return !!localStorage.getItem('mpb_token');
   },
 
-  // Récupérer le membre courant
   getCurrentMember: () => {
     const memberStr = localStorage.getItem('mpb_member');
     return memberStr ? JSON.parse(memberStr) : null;
   },
 
-  // Sauvegarder les données d'authentification
   saveAuthData: (token, member) => {
     localStorage.setItem('mpb_token', token);
     localStorage.setItem('mpb_member', JSON.stringify(member));
   }
 };
 
-// Service des membres
+// ============ SERVICE MEMBERS ============
 export const memberService = {
-  // Récupérer le profil
   getProfile: async () => {
     try {
       const response = await apiClient.get('/members/profile');
@@ -112,7 +110,6 @@ export const memberService = {
     }
   },
 
-  // Mettre à jour le profil
   updateProfile: async (profileData) => {
     try {
       const response = await apiClient.put('/members/profile', profileData);
@@ -122,7 +119,6 @@ export const memberService = {
     }
   },
 
-  // Récupérer tous les membres
   getAllMembers: async () => {
     try {
       const response = await apiClient.get('/members/all');
@@ -133,10 +129,8 @@ export const memberService = {
   }
 };
 
-export default apiClient;
-// Service admin
+// ============ SERVICE ADMIN ============
 export const adminService = {
-  // Dashboard stats
   getDashboardStats: async () => {
     try {
       const response = await apiClient.get('/admin/dashboard');
@@ -146,7 +140,6 @@ export const adminService = {
     }
   },
 
-  // Gestion des membres
   getAllMembersAdmin: async () => {
     try {
       const response = await apiClient.get('/admin/members');
@@ -155,6 +148,106 @@ export const adminService = {
       throw error.response?.data || { message: 'Erreur de récupération des membres' };
     }
   },
-
-  // Autres méthodes admin...
 };
+
+// ============ SERVICE POSTS ============
+export const postService = {
+  // Récupérer toutes les publications
+  getAllPosts: async (params = {}) => {
+    try {
+      const response = await apiClient.get('/posts', { params });
+      console.log('📡 Réponse posts:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erreur getAllPosts:', error.response?.data || error.message);
+      return { 
+        success: false, 
+        posts: [],
+        message: error.response?.data?.message || 'Erreur de connexion'
+      };
+    }
+  },
+
+  // Récupérer une publication
+  getPost: async (id) => {
+    try {
+      const response = await apiClient.get(`/posts/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erreur getPost:', error);
+      return { success: false, message: 'Erreur de récupération' };
+    }
+  },
+
+  // Créer une publication (admin)
+  createPost: async (postData) => {
+    try {
+      let config = {
+        headers: {}
+      };
+      
+      const token = localStorage.getItem('mpb_token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      
+      // Si c'est FormData, laisser axios gérer le Content-Type
+      if (postData instanceof FormData) {
+        // Rien à faire, axios le gère automatiquement
+      } else {
+        config.headers['Content-Type'] = 'application/json';
+      }
+      
+      const response = await apiClient.post('/posts', postData, config);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erreur createPost:', error.response?.data || error);
+      throw error.response?.data || { 
+        message: 'Erreur de création de publication'
+      };
+    }
+  },
+
+  // Récupérer les posts récents
+  getRecentPosts: async (limit = 3) => {
+    try {
+      const response = await apiClient.get(`/posts/recent?limit=${limit}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erreur getRecentPosts:', error);
+      return { success: false, posts: [] };
+    }
+  },
+
+  // Récupérer les posts à la une
+  getFeaturedPosts: async () => {
+    try {
+      const response = await apiClient.get('/posts/featured');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erreur getFeaturedPosts:', error);
+      return { success: false, posts: [] };
+    }
+  },
+
+  // Fonction pour les images
+  // Dans services/api.js, modifie getImageUrl :
+getImageUrl: (imagePath) => {
+  if (!imagePath) return null;
+  
+  // Avec proxy, utilise le chemin relatif directement
+  if (imagePath.startsWith('/uploads')) {
+    return imagePath; // Vite proxy va rediriger vers localhost:5000
+  }
+  
+  // Pour les anciens chemins
+  if (imagePath.includes('images-')) {
+    return `/uploads/images/posts/${imagePath}`;
+  }
+  
+  return imagePath;
+}
+};
+
+// Export par défaut
+export default apiClient;

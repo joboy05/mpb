@@ -10,10 +10,11 @@ const getAuthHeader = () => {
 };
 
 // Helper SPÉCIAL pour FormData (sans Content-Type)
+/*
 const getFormDataAuthHeader = () => {
   const token = localStorage.getItem('mpb_token');
   return token ? { Authorization: `Bearer ${token}` } : {};
-};
+};*/
 
 export const postService = {
   // Récupérer toutes les publications
