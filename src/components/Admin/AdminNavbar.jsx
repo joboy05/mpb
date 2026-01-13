@@ -39,10 +39,10 @@ const AdminNavbar = ({ admin, searchQuery, setSearchQuery, handleSearch, handleL
                 <Calendar className="w-4 h-4 mr-2" />
                 Publications
               </Link>
-              <Link to="/admin/rapports" className="text-[#CCDDFF] hover:text-white hover:border-[#FFD700]/50 inline-flex items-center px-4 py-2 border-b-2 border-transparent hover:border-b-2 text-sm font-medium">
+              {/*<Link to="/admin/rapports" className="text-[#CCDDFF] hover:text-white hover:border-[#FFD700]/50 inline-flex items-center px-4 py-2 border-b-2 border-transparent hover:border-b-2 text-sm font-medium">
                 <FileText className="w-4 h-4 mr-2" />
                 Rapports
-              </Link>
+              </Link>*/}
             </div>
           </div>
           
