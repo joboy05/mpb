@@ -70,7 +70,7 @@ const Footer = () => {
               </a>
               
               <a 
-                href="https://www.tiktok.com/@mpb_officiel" 
+                href="https://www.tiktok.com/@mpbmouvementdesjeunes" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-yellow-400 hover:text-blue-900 transition"
