@@ -303,7 +303,7 @@ const Navbar = () => {
             
             <div className="w-px h-6 bg-white/20 mx-2"></div>
             
-            {/* Bouton "Rejoindre le mouvement" - Version Icone */}
+            {/* Bouton "Rejoindre le mouvement" - Version Desktop (Texte) */}
             <div 
               className="relative"
               onMouseEnter={() => setIsJoinHovered(true)}
@@ -311,7 +311,7 @@ const Navbar = () => {
             >
               <Link
                 to="/rejoindre"
-                className="relative bg-gradient-to-r from-[#FFD700] via-[#FFB300] to-[#FFD700] text-[#003366] w-14 h-14 rounded-xl font-bold shadow-lg hover:shadow-[0_0_25px_rgba(255,215,0,0.3)] transition-all duration-300 flex items-center justify-center group/btn overflow-hidden"
+                className="relative bg-gradient-to-r from-[#FFD700] via-[#FFB300] to-[#FFD700] text-[#003366] px-5 py-3 rounded-xl font-bold shadow-lg hover:shadow-[0_0_25px_rgba(255,215,0,0.3)] transition-all duration-300 flex items-center justify-center group/btn overflow-hidden min-w-[150px]"
                 title="Rejoindre le Mouvement"
                 aria-label="Rejoindre le Mouvement"
               >
@@ -319,8 +319,8 @@ const Navbar = () => {
                   <div className="absolute -inset-8 bg-gradient-to-r from-transparent via-white/30 to-transparent transform -translate-x-full group-hover/btn:translate-x-full transition-transform duration-800"></div>
                 </div>
                 
-                <div className="relative">
-                  <JoinIcon />
+                <div className="relative flex items-center space-x-2">
+                  <span className="font-bold text-sm sm:text-base tracking-wide">Rejoindre</span>
                 </div>
                 
                 <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center text-white text-xs font-bold animate-pulse shadow-md border border-white">
@@ -330,9 +330,9 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* Mobile: Bouton Rejoindre + Hamburger */}
+          {/* Mobile/Tablette: Bouton Rejoindre (Icône) + Hamburger */}
           <div className="lg:hidden flex items-center gap-3">
-            {/* Bouton Rejoindre Mobile - Version Icone */}
+            {/* Bouton Rejoindre Mobile - Version Icône (Visible seulement sur mobile/tablette) */}
             <div className="relative">
               <Link
                 to="/rejoindre"
@@ -487,7 +487,7 @@ const Navbar = () => {
             </div>
           </div>
           
-          {/* Bouton "Rejoindre" en bas */}
+          {/* Bouton "Rejoindre" en bas (version texte pour le menu mobile) */}
           <div className="p-6 border-t border-[#FFD700]/20 flex-shrink-0">
             <Link
               to="/rejoindre"
