@@ -1,8 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { postService } from '../../services/postService';
-import { authAPI } from '../../api/auth';
-import { ArrowLeft, Search, Filter, Trash2, Edit, Eye, Calendar, FileText, Users, Star, Plus } from 'lucide-react';
+import { authService } from '../../services/api';
+import * as LucideIcons from 'lucide-react';
+
+// Extraire les icônes nécessaires
+const {
+  ArrowLeft,
+  Search,
+  Filter,
+  Trash2,
+  Edit,
+  Eye,
+  Calendar,
+  FileText,
+  Users,
+  Star,
+  Plus
+} = LucideIcons;
 
 const ManagePosts = () => {
   const [posts, setPosts] = useState([]);
@@ -15,31 +30,42 @@ const ManagePosts = () => {
   const [postToDelete, setPostToDelete] = useState(null);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
 
-  const currentMember = authAPI.getCurrentMember();
+  // Vérifier l'authentification avec authService
+  const currentMember = authService.getCurrentMember();
 
-  const loadPosts = useCallback(async () => {
+  const loadPosts = useCallback(async (forceRefresh = false) => {
     if (!currentMember || currentMember.role !== 'admin') {
       setLoading(false);
       return;
     }
 
-    if (initialLoadDone && posts.length > 0) {
+    if (initialLoadDone && !forceRefresh) {
       return;
     }
 
     try {
       setLoading(true);
       setError('');
+      
+      console.log('🔄 Chargement des publications...');
       const response = await postService.getAllPosts();
-      setPosts(response.posts || []);
-      setInitialLoadDone(true);
+      console.log('📊 Publications reçues:', response);
+      
+      if (response.success) {
+        setPosts(response.posts || []);
+        setInitialLoadDone(true);
+      } else {
+        setError(response.message || 'Erreur de chargement des publications');
+        setPosts([]);
+      }
     } catch (err) {
-      console.error('Erreur chargement publications:', err);
-      setError(err.message || 'Erreur de chargement des publications');
+      console.error('❌ Erreur chargement publications:', err);
+      setError(err.message || 'Erreur de connexion au serveur');
+      setPosts([]);
     } finally {
       setLoading(false);
     }
-  }, [currentMember, initialLoadDone, posts.length]);
+  }, [currentMember, initialLoadDone]);
 
   useEffect(() => {
     let mounted = true;
@@ -60,7 +86,7 @@ const ManagePosts = () => {
   const filteredPosts = React.useMemo(() => {
     return posts.filter(post => {
       if (filter !== 'tous' && post.type !== filter) return false;
-      if (searchQuery && !post.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      if (searchQuery && !post.title?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       return true;
     });
   }, [posts, filter, searchQuery]);
@@ -119,6 +145,32 @@ const ManagePosts = () => {
     }
   }, []);
 
+  // Fonction pour obtenir l'URL de l'image (gère base64 et URLs)
+  const getImageUrl = useCallback((image) => {
+    if (!image) return null;
+    
+    // Priorité 1: thumbnailBase64 (pour les listes)
+    if (image.thumbnailBase64) {
+      return image.thumbnailBase64;
+    }
+    
+    // Priorité 2: base64 complet
+    if (image.base64) {
+      return image.base64;
+    }
+    
+    // Ancien système (fichiers sur disque)
+    if (image.url) {
+      if (image.url.startsWith('http')) {
+        return image.url;
+      }
+      // Pour le développement local
+      return `http://localhost:5000${image.url}`;
+    }
+    
+    return null;
+  }, []);
+
   if (!currentMember || currentMember.role !== 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#003366]/5 via-[#004488]/5 to-[#003366]/5">
@@ -135,6 +187,9 @@ const ManagePosts = () => {
       </div>
     );
   }
+
+  // Image de fallback en base64
+  const fallbackImage = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiNGM0YzRjMiLz48dGV4dCB4PSIzMiIgeT0iMzQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzk5OSI+SU1HPC90ZXh0Pjwvc3ZnPg==';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#003366]/5 via-[#004488]/5 to-[#003366]/5 py-8">
@@ -270,7 +325,7 @@ const ManagePosts = () => {
                 <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-2">Erreur de chargement</h3>
                 <p className="text-gray-600 mb-4">{error}</p>
                 <button
-                  onClick={loadPosts}
+                  onClick={() => loadPosts(true)}
                   className="bg-gradient-to-r from-[#FFD700] to-[#FFAA00] text-[#003366] px-5 py-2 rounded-xl hover:shadow-lg transition-all duration-300 font-medium"
                 >
                   Réessayer
@@ -288,7 +343,7 @@ const ManagePosts = () => {
                     : 'Commencez par créer votre première publication'}
                 </p>
                 <Link
-                  to="/admin/evenements"
+                  to="/admin/content/create"
                   className="inline-flex items-center bg-gradient-to-r from-[#FFD700] to-[#FFAA00] text-[#003366] font-semibold px-5 py-2.5 rounded-xl hover:shadow-lg hover:shadow-[#FFD700]/20 transition-all duration-300"
                 >
                   <Plus className="w-5 h-5 mr-2" />
@@ -316,117 +371,118 @@ const ManagePosts = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200/50">
-                    {filteredPosts.map((post) => (
-                      <tr key={post._id} className="hover:bg-gradient-to-r hover:from-gray-50/50 hover:to-gray-100/50 transition-all duration-300">
-                        <td className="p-4">
-                          <input
-                            type="checkbox"
-                            checked={selectedPosts.includes(post._id)}
-                            onChange={() => toggleSelectPost(post._id)}
-                            className="w-4 h-4 text-[#003366] rounded focus:ring-[#FFD700] border-gray-300"
-                          />
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-start gap-3">
-                            {post.images && post.images.length > 0 && (
+                    {filteredPosts.map((post) => {
+                      const firstImage = post.images && post.images.length > 0 ? post.images[0] : null;
+                      const imageUrl = firstImage ? getImageUrl(firstImage) : fallbackImage;
+                      
+                      return (
+                        <tr key={post._id} className="hover:bg-gradient-to-r hover:from-gray-50/50 hover:to-gray-100/50 transition-all duration-300">
+                          <td className="p-4">
+                            <input
+                              type="checkbox"
+                              checked={selectedPosts.includes(post._id)}
+                              onChange={() => toggleSelectPost(post._id)}
+                              className="w-4 h-4 text-[#003366] rounded focus:ring-[#FFD700] border-gray-300"
+                            />
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-start gap-3">
                               <div className="flex-shrink-0">
                                 <img
-                                  src={post.images[0].url?.startsWith('http') 
-                                    ? post.images[0].url 
-                                    : `http://localhost:5000${post.images[0].url}`}
+                                  src={imageUrl}
                                   alt={post.title}
                                   className="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-lg border border-gray-300/50"
                                   onError={(e) => {
                                     e.target.onerror = null;
-                                    e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIGZpbGw9IiNGM0YzRjMiLz48dGV4dCB4PSIzMiIgeT0iMzQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzk5OSI+SU1HPC90ZXh0Pjwvc3ZnPg==';
+                                    e.target.src = fallbackImage;
                                   }}
                                 />
                               </div>
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <h3 className="font-medium text-gray-800 truncate">
-                                {post.title}
-                              </h3>
-                              <p className="text-sm text-gray-600 line-clamp-2 mt-1">
-                                {post.content?.substring(0, 100)}...
-                              </p>
-                              <div className="flex flex-wrap items-center gap-2 mt-2">
-                                <span className="text-xs text-gray-500">
-                                  Par {post.author?.prenom || 'Anonyme'} {post.author?.nom || ''}
-                                </span>
-                                {post.featured && (
-                                  <span className="text-xs bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 px-2 py-1 rounded-full border border-yellow-300/50">
-                                    <Star className="w-3 h-3 inline mr-1" />
-                                    À la une
+                              <div className="min-w-0 flex-1">
+                                <h3 className="font-medium text-gray-800 truncate">
+                                  {post.title || 'Sans titre'}
+                                </h3>
+                                <p className="text-sm text-gray-600 line-clamp-2 mt-1">
+                                  {post.content?.substring(0, 100) || 'Aucun contenu'}...
+                                </p>
+                                <div className="flex flex-wrap items-center gap-2 mt-2">
+                                  <span className="text-xs text-gray-500">
+                                    Par {post.author?.prenom || 'Anonyme'} {post.author?.nom || ''}
                                   </span>
-                                )}
+                                  {post.featured && (
+                                    <span className="text-xs bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 px-2 py-1 rounded-full border border-yellow-300/50">
+                                      <Star className="w-3 h-3 inline mr-1" />
+                                      À la une
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                            post.type === 'événement' ? 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 border border-red-300/50' :
-                            post.type === 'actualité' ? 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300/50' :
-                            'bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300/50'
-                          }`}>
-                            {post.type === 'événement' ? <Calendar className="w-3 h-3 inline mr-1" /> :
-                             post.type === 'actualité' ? <FileText className="w-3 h-3 inline mr-1" /> :
-                             <Users className="w-3 h-3 inline mr-1" />}
-                            {post.type}
-                          </span>
-                          {post.eventDate && (
-                            <p className="text-xs text-gray-600 mt-1">
-                              {formatDate(post.eventDate)}
-                            </p>
-                          )}
-                        </td>
-                        <td className="p-4 text-sm text-gray-600">
-                          {formatDate(post.publishDate || post.createdAt)}
-                        </td>
-                        <td className="p-4">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-3 text-sm text-gray-700">
-                              <span title="J'aime">👍 {post.likes?.length || 0}</span>
-                              <span title="Je n'aime pas">👎 {post.dislikes?.length || 0}</span>
-                              <span title="Vues">👁️ {post.viewCount || 0}</span>
+                          </td>
+                          <td className="p-4">
+                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                              post.type === 'événement' ? 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 border border-red-300/50' :
+                              post.type === 'actualité' ? 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300/50' :
+                              'bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300/50'
+                            }`}>
+                              {post.type === 'événement' ? <Calendar className="w-3 h-3 inline mr-1" /> :
+                               post.type === 'actualité' ? <FileText className="w-3 h-3 inline mr-1" /> :
+                               <Users className="w-3 h-3 inline mr-1" />}
+                              {post.type || 'Non spécifié'}
+                            </span>
+                            {post.eventDate && (
+                              <p className="text-xs text-gray-600 mt-1">
+                                {formatDate(post.eventDate)}
+                              </p>
+                            )}
+                          </td>
+                          <td className="p-4 text-sm text-gray-600">
+                            {formatDate(post.publishDate || post.createdAt)}
+                          </td>
+                          <td className="p-4">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-3 text-sm text-gray-700">
+                                <span title="J'aime">👍 {post.likes?.length || 0}</span>
+                                <span title="Je n'aime pas">👎 {post.dislikes?.length || 0}</span>
+                                <span title="Vues">👁️ {post.viewCount || 0}</span>
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {post.images?.length || 0} image{post.images?.length !== 1 ? 's' : ''}
+                              </div>
                             </div>
-                            <div className="text-xs text-gray-500">
-                              {post.images?.length || 0} image{post.images?.length !== 1 ? 's' : ''}
+                          </td>
+                          <td className="p-4">
+                            <div className="flex flex-col gap-2">
+                              <Link
+                                to={`/admin/content/edit/${post._id}`}
+                                className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm transition-colors duration-300"
+                              >
+                                <Edit className="w-4 h-4" />
+                                Modifier
+                              </Link>
+                              <Link
+                                to={`/actualites/${post._id}`}
+                                target="_blank"
+                                className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 text-sm transition-colors duration-300"
+                              >
+                                <Eye className="w-4 h-4" />
+                                Prévisualiser
+                              </Link>
+                              <button
+                                onClick={() => {
+                                  setPostToDelete(post._id);
+                                  setShowDeleteModal(true);
+                                }}
+                                className="inline-flex items-center gap-2 text-red-600 hover:text-red-800 text-sm transition-colors duration-300 text-left"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Supprimer
+                              </button>
                             </div>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex flex-col gap-2">
-                            <Link
-                              to={`/admin/content/edit/${post._id}`}
-                              className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm transition-colors duration-300"
-                            >
-                              <Edit className="w-4 h-4" />
-                              Modifier
-                            </Link>
-                            <Link
-                              to={`/actualites/${post._id}`}
-                              target="_blank"
-                              className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 text-sm transition-colors duration-300"
-                            >
-                              <Eye className="w-4 h-4" />
-                              Prévisualiser
-                            </Link>
-                            <button
-                              onClick={() => {
-                                setPostToDelete(post._id);
-                                setShowDeleteModal(true);
-                              }}
-                              className="inline-flex items-center gap-2 text-red-600 hover:text-red-800 text-sm transition-colors duration-300 text-left"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Supprimer
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -15,6 +15,8 @@ import AdminDashboard from './pages/admin/Dashboard';
 import CreateContent from './pages/admin/CreateContent';
 import UserDashboard from './pages/users/Dashboard';
 import ManagePosts from './pages/admin/ManagePost';
+import EditContent from './pages/admin/EditContent';
+
 // Créez un composant LoginPage ou supprimez cette route si vous ne l'avez pas encore
 // import LoginPage from './pages/LoginPage';
 
@@ -58,6 +60,11 @@ function App() {
         <Route path="/admin/posts" element={
           <AdminRoute>
             <ManagePosts />
+          </AdminRoute>
+        } />
+        <Route path="/admin/content/edit/:id" element={
+          <AdminRoute>
+            <EditContent />
           </AdminRoute>
         } />
 <Route path="/profil" element={

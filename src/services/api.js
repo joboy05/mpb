@@ -278,29 +278,42 @@ export const postService = {
   },
 
   // Fonction pour obtenir l'URL d'une image
-  getImageUrl: (image) => {
-    if (!image) return null;
-    
-    // Priorité 1: thumbnailBase64 (pour les listes)
-    if (image.thumbnailBase64) {
-      return image.thumbnailBase64;
-    }
-    
-    // Priorité 2: base64 complet (seulement si nécessaire)
-    if (image.base64) {
-      return image.base64;
-    }
-    
-    // Ancien système de fichiers (compatibilité)
-    if (image.url) {
-      if (image.url.startsWith('/uploads')) {
-        return `http://localhost:5000${image.url}`;
-      }
+  // Dans api.js, modifiez la fonction getImageUrl :
+getImageUrl: (image) => {
+  if (!image) return null;
+  
+  console.log('🔍 getImageUrl - Image data:', {
+    hasThumbnail: !!image.thumbnailBase64,
+    hasBase64: !!image.base64,
+    thumbnailLength: image.thumbnailBase64 ? image.thumbnailBase64.length : 0,
+    base64Length: image.base64 ? image.base64.length : 0
+  });
+  
+  // Priorité 1: thumbnailBase64 (pour les listes)
+  if (image.thumbnailBase64) {
+    console.log('🖼️ Utilisation thumbnailBase64');
+    return image.thumbnailBase64;
+  }
+  
+  // Priorité 2: base64 complet
+  if (image.base64) {
+    console.log('🖼️ Utilisation base64 complet');
+    return image.base64;
+  }
+  
+  // Ancien système (fichiers sur disque)
+  if (image.url) {
+    console.log('🖼️ Utilisation URL');
+    if (image.url.startsWith('http')) {
       return image.url;
     }
-    
-    return null;
-  },
+    // Pour le développement local
+    return `http://localhost:5000${image.url}`;
+  }
+  
+  console.log('❌ Aucune source d\'image trouvée');
+  return null;
+},
 
   // Fonction pour obtenir une image complète (lazy loading)
   getFullImageUrl: async (postId, imageId) => {
