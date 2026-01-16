@@ -4,154 +4,128 @@ import { postService } from '../../services/postService';
 import { authService } from '../../services/api';
 import * as LucideIcons from 'lucide-react';
 
-// Extraire les icônes nécessaires
 const {
   ArrowLeft,
-  Calendar,
   FileText,
-  Users,
   Upload,
   X,
-  Image,
-  File,
+  Image: ImageIcon,
   Plus,
   Tag,
-  MapPin
+  Calendar,
+  Clock,
+  MapPin,
+  Home,
+  Phone,
+  Mail
 } = LucideIcons;
 
-// Ou si le problème persiste, utilisez un alias pour l'icône Image
-// const { Image: ImageIcon } = LucideIcons; // Si vous voulez renommer
-
-const CreateContent = () => {
+const CreateActualite = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [contentType, setContentType] = useState('événement');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [redirectCount, setRedirectCount] = useState(3);
   
   const imageInputRef = useRef(null);
-  const fileInputRef = useRef(null);
+  
+  // Ajouter un état pour le type de publication
+  const [postType, setPostType] = useState('actualité');
   
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    type: 'événement',
     category: 'politique',
-    tags: ''
-  });
-  
-  const [eventData, setEventData] = useState({
-    eventType: 'meeting',
+    tags: '',
+    // Champs pour événements
     eventDate: '',
-    eventEndDate: '',
+    eventTime: '',
     eventLocation: '',
+    eventAddress: '',
     eventCity: '',
-    eventDepartment: '',
-    registrationRequired: false,
-    maxParticipants: ''
+    eventContact: ''
   });
   
-  const [selectedImages, setSelectedImages] = useState([]);
-  const [selectedFiles, setSelectedFiles] = useState([]);
-  const [imagePreviews, setImagePreviews] = useState([]);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
 
-  // Nettoyer les URLs des prévisualisations à la destruction du composant
+  // Nettoyer l'URL de prévisualisation
   useEffect(() => {
     return () => {
-      imagePreviews.forEach(preview => {
-        if (preview?.url) {
-          URL.revokeObjectURL(preview.url);
-        }
-      });
+      if (imagePreview?.url) {
+        URL.revokeObjectURL(imagePreview.url);
+      }
     };
-  }, [imagePreviews]);
+  }, [imagePreview]);
+
+  // Gérer le compte à rebours de redirection
+  useEffect(() => {
+    let interval;
+    if (showSuccessModal && redirectCount > 0) {
+      interval = setInterval(() => {
+        setRedirectCount(prev => prev - 1);
+      }, 1000);
+    } else if (redirectCount === 0) {
+      handleRedirect();
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [showSuccessModal, redirectCount]);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    if (name.startsWith('event')) {
-      setEventData(prev => ({
-        ...prev,
-        [name]: type === 'checkbox' ? checked : value
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: type === 'checkbox' ? checked : value
-      }));
-    }
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
     setError('');
   };
 
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files);
-    const newImages = [];
-    const newPreviews = [];
     
-    files.forEach((file, index) => {
-      if (file.size > 5 * 1024 * 1024) {
-        setError(`L'image "${file.name}" est trop grande (max 5MB)`);
-        return;
-      }
-      
-      if (!file.type.startsWith('image/')) {
-        setError(`Le fichier "${file.name}" n'est pas une image valide`);
-        return;
-      }
-      
-      newImages.push(file);
-      const previewUrl = URL.createObjectURL(file);
-      newPreviews.push({
-        url: previewUrl,
-        name: file.name,
-        size: file.size,
-        type: file.type
-      });
+    if (files.length === 0) return;
+    
+    const file = files[0];
+    
+    if (file.size > 5 * 1024 * 1024) {
+      setError(`L'image "${file.name}" est trop grande (max 5MB)`);
+      return;
+    }
+    
+    if (!file.type.startsWith('image/')) {
+      setError(`Le fichier "${file.name}" n'est pas une image valide`);
+      return;
+    }
+    
+    if (imagePreview?.url) {
+      URL.revokeObjectURL(imagePreview.url);
+    }
+    
+    const previewUrl = URL.createObjectURL(file);
+    setSelectedImage(file);
+    setImagePreview({
+      url: previewUrl,
+      name: file.name,
+      size: file.size,
+      type: file.type
     });
     
-    if (newImages.length > 0) {
-      setSelectedImages(prev => [...prev, ...newImages]);
-      setImagePreviews(prev => [...prev, ...newPreviews]);
-    }
+    setError('');
   };
 
-  const handleFileSelect = (e) => {
-    const files = Array.from(e.target.files);
-    const validFiles = [];
-    
-    files.forEach(file => {
-      if (file.size > 10 * 1024 * 1024) {
-        setError(`Le fichier "${file.name}" est trop grand (max 10MB)`);
-        return;
-      }
-      
-      const validExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt'];
-      const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
-      
-      if (!validExtensions.includes(fileExtension)) {
-        setError(`Type de fichier non supporté: ${file.name}`);
-        return;
-      }
-      
-      validFiles.push(file);
-    });
-    
-    if (validFiles.length > 0) {
-      setSelectedFiles(prev => [...prev, ...validFiles]);
-    }
-  };
-
-  const removeImage = (index) => {
-    // Nettoyer l'URL de la prévisualisation
-    if (imagePreviews[index]?.url) {
-      URL.revokeObjectURL(imagePreviews[index].url);
+  const removeImage = () => {
+    if (imagePreview?.url) {
+      URL.revokeObjectURL(imagePreview.url);
     }
     
-    setSelectedImages(prev => prev.filter((_, i) => i !== index));
-    setImagePreviews(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const removeFile = (index) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (imageInputRef.current) {
+      imageInputRef.current.value = '';
+    }
   };
 
   const formatFileSize = (bytes) => {
@@ -173,15 +147,16 @@ const CreateContent = () => {
       errors.push('Le contenu est requis');
     }
     
-    if (formData.type === 'événement') {
-      if (!eventData.eventDate) {
+    // Validation spécifique aux événements
+    if (postType === 'événement') {
+      if (!formData.eventDate) {
         errors.push('La date de l\'événement est requise');
       }
-      if (!eventData.eventLocation) {
+      if (!formData.eventLocation) {
         errors.push('Le lieu de l\'événement est requis');
       }
-      if (!eventData.eventCity) {
-        errors.push('La ville est requise');
+      if (!formData.eventAddress) {
+        errors.push('L\'adresse de l\'événement est requise');
       }
     }
     
@@ -191,7 +166,6 @@ const CreateContent = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validation du formulaire
     const validationErrors = validateForm();
     if (validationErrors.length > 0) {
       setError(validationErrors.join('\n'));
@@ -201,51 +175,36 @@ const CreateContent = () => {
     setLoading(true);
     setError('');
     setSuccess('');
+    setRedirectCount(3);
     
     try {
-      // Créer un FormData pour l'envoi
       const formDataToSend = new FormData();
       
       // Ajouter les données principales
       formDataToSend.append('title', formData.title);
       formDataToSend.append('content', formData.content);
-      formDataToSend.append('type', formData.type);
       formDataToSend.append('category', formData.category);
+      formDataToSend.append('type', postType);
       
       if (formData.tags) {
         formDataToSend.append('tags', formData.tags);
       }
       
-      // Ajouter les données d'événement si nécessaire
-      if (formData.type === 'événement') {
-        formDataToSend.append('eventType', eventData.eventType);
-        formDataToSend.append('eventDate', eventData.eventDate);
-        formDataToSend.append('eventLocation', eventData.eventLocation);
-        formDataToSend.append('eventCity', eventData.eventCity);
-        
-        if (eventData.eventEndDate) {
-          formDataToSend.append('eventEndDate', eventData.eventEndDate);
-        }
-        if (eventData.eventDepartment) {
-          formDataToSend.append('eventDepartment', eventData.eventDepartment);
-        }
-        if (eventData.maxParticipants) {
-          formDataToSend.append('maxParticipants', eventData.maxParticipants);
-        }
-        formDataToSend.append('registrationRequired', eventData.registrationRequired);
+      // Ajouter les données spécifiques aux événements
+      if (postType === 'événement') {
+        formDataToSend.append('eventDate', formData.eventDate);
+        formDataToSend.append('eventTime', formData.eventTime || '');
+        formDataToSend.append('eventLocation', formData.eventLocation);
+        formDataToSend.append('eventAddress', formData.eventAddress);
+        formDataToSend.append('eventCity', formData.eventCity || '');
+        formDataToSend.append('eventContact', formData.eventContact || '');
       }
       
-      // Ajouter les images
-      selectedImages.forEach((image) => {
-        formDataToSend.append('images', image);
-      });
+      if (selectedImage) {
+        formDataToSend.append('images', selectedImage);
+      }
       
-      // Ajouter les fichiers
-      selectedFiles.forEach((file) => {
-        formDataToSend.append('files', file);
-      });
-      
-      console.log('📤 Envoi des données...');
+      console.log('📤 Envoi de la publication...');
       
       // Envoyer au backend
       const response = await postService.createPost(formDataToSend);
@@ -253,50 +212,37 @@ const CreateContent = () => {
       console.log('✅ Réponse du serveur:', response);
       
       if (response.success) {
+        // Afficher le modal de succès
+        setShowSuccessModal(true);
         setSuccess('Publication créée avec succès !');
         
         // Réinitialiser le formulaire
         setFormData({
           title: '',
           content: '',
-          type: 'événement',
           category: 'politique',
-          tags: ''
-        });
-        
-        setEventData({
-          eventType: 'meeting',
+          tags: '',
           eventDate: '',
-          eventEndDate: '',
+          eventTime: '',
           eventLocation: '',
+          eventAddress: '',
           eventCity: '',
-          eventDepartment: '',
-          registrationRequired: false,
-          maxParticipants: ''
+          eventContact: ''
         });
         
-        // Nettoyer les prévisualisations d'images
-        imagePreviews.forEach(preview => {
-          if (preview.url) {
-            URL.revokeObjectURL(preview.url);
-          }
-        });
+        // Nettoyer l'image
+        if (imagePreview?.url) {
+          URL.revokeObjectURL(imagePreview.url);
+        }
+        setSelectedImage(null);
+        setImagePreview(null);
         
-        setSelectedImages([]);
-        setSelectedFiles([]);
-        setImagePreviews([]);
-        
-        // Redirection après 2 secondes
-        setTimeout(() => {
-          navigate('/admin/dashboard');
-        }, 2000);
       } else {
-        setError(response.message || 'Erreur lors de la création de la publication');
+        setError(response.message || 'Erreur lors de la création');
       }
       
     } catch (err) {
       console.error('❌ Erreur création:', err);
-      // Gérer l'erreur correctement
       const errorMessage = err?.response?.data?.message || err?.message || 'Une erreur est survenue lors de la création';
       setError(errorMessage);
     } finally {
@@ -304,7 +250,17 @@ const CreateContent = () => {
     }
   };
 
-  // Vérifier l'authentification avec authService
+  const handleRedirect = () => {
+    setShowSuccessModal(false);
+    navigate('/admin/posts');
+  };
+
+  const cancelRedirect = () => {
+    setShowSuccessModal(false);
+    setRedirectCount(3);
+  };
+
+  // Vérifier l'authentification
   const currentMember = authService.getCurrentMember();
   if (!currentMember || currentMember.role !== 'admin') {
     return (
@@ -348,13 +304,54 @@ const CreateContent = () => {
             <p className="text-gray-600">
               Remplissez tous les champs obligatoires (*)
             </p>
-            <p className="text-sm text-blue-600 mt-2">
-              ⓘ Les images sont maintenant stockées en base64 dans la base de données
-            </p>
           </div>
         </div>
 
-        {/* Messages */}
+        {/* Type de publication */}
+        <div className="relative group mb-8">
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl opacity-0 group-hover:opacity-10 blur transition duration-1000 group-hover:duration-200"></div>
+          
+          <div className="relative bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl border border-white/20 shadow-xl p-6">
+            <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-[#003366]" />
+              Type de publication
+            </h2>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setPostType('actualité')}
+                className={`p-4 rounded-xl border transition-all duration-300 ${
+                  postType === 'actualité'
+                    ? 'border-[#003366] bg-gradient-to-r from-[#003366]/10 to-[#004488]/10 text-[#003366] font-semibold'
+                    : 'border-gray-300/50 hover:border-gray-400 text-gray-700'
+                }`}
+              >
+                <div className="text-center">
+                  <div className="text-lg font-medium mb-2">📰 Actualité</div>
+                  <p className="text-sm text-gray-600">Publication d'information</p>
+                </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setPostType('événement')}
+                className={`p-4 rounded-xl border transition-all duration-300 ${
+                  postType === 'événement'
+                    ? 'border-purple-600 bg-gradient-to-r from-purple-500/10 to-purple-600/10 text-purple-700 font-semibold'
+                    : 'border-gray-300/50 hover:border-gray-400 text-gray-700'
+                }`}
+              >
+                <div className="text-center">
+                  <div className="text-lg font-medium mb-2">🎪 Événement</div>
+                  <p className="text-sm text-gray-600">Meeting, réunion, manifestation</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Messages d'erreur/succès */}
         {error && (
           <div className="relative mb-6 group">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-red-500 to-red-600 rounded-xl opacity-0 group-hover:opacity-10 blur transition duration-1000 group-hover:duration-200"></div>
@@ -364,55 +361,10 @@ const CreateContent = () => {
             </div>
           </div>
         )}
-        
-        {success && (
-          <div className="relative mb-6 group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500 to-green-600 rounded-xl opacity-0 group-hover:opacity-10 blur transition duration-1000 group-hover:duration-200"></div>
-            <div className="relative bg-gradient-to-br from-green-50/80 to-green-100/60 backdrop-blur-sm border border-green-200/50 text-green-700 px-4 py-3 rounded-xl">
-              <div className="font-bold">✅ Succès :</div>
-              {success}
-            </div>
-          </div>
-        )}
 
-        {/* Sélection du type */}
-        <div className="relative mb-6 group">
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-[#003366] to-[#004488] rounded-2xl opacity-0 group-hover:opacity-10 blur transition duration-1000 group-hover:duration-200"></div>
-          
-          <div className="relative bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl border border-white/20 shadow-xl p-6">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Type de contenu *</h2>
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                { value: 'événement', label: 'Événement', icon: <Calendar className="w-6 h-6" />, color: 'from-blue-500 to-blue-600' },
-                { value: 'actualité', label: 'Actualité', icon: <FileText className="w-6 h-6" />, color: 'from-green-500 to-green-600' },
-                { value: 'communiqué', label: 'Communiqué', icon: <Users className="w-6 h-6" />, color: 'from-purple-500 to-purple-600' }
-              ].map((type) => (
-                <button
-                  key={type.value}
-                  type="button"
-                  onClick={() => {
-                    setContentType(type.value);
-                    setFormData(prev => ({ ...prev, type: type.value }));
-                  }}
-                  className={`p-4 rounded-xl border-2 text-center transition-all duration-300 ${
-                    contentType === type.value
-                      ? 'border-[#003366] bg-gradient-to-br from-white to-gray-50 shadow-lg'
-                      : 'border-gray-200/50 hover:border-gray-300 hover:bg-gray-50/50'
-                  }`}
-                >
-                  <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${type.color} flex items-center justify-center text-white mx-auto mb-3`}>
-                    {type.icon}
-                  </div>
-                  <div className="font-bold text-gray-800">{type.label}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Formulaire principal */}
+        {/* Formulaire */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Informations de base */}
+          {/* Informations principales */}
           <div className="relative group">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-[#003366] to-[#004488] rounded-2xl opacity-0 group-hover:opacity-10 blur transition duration-1000 group-hover:duration-200"></div>
             
@@ -425,7 +377,7 @@ const CreateContent = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Titre *
+                    Titre de la publication *
                   </label>
                   <input
                     type="text"
@@ -434,7 +386,7 @@ const CreateContent = () => {
                     onChange={handleChange}
                     required
                     className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FFD700] focus:border-transparent text-gray-800 placeholder-gray-500"
-                    placeholder="Donnez un titre clair et percutant..."
+                    placeholder={`Donnez un titre clair pour ${postType === 'événement' ? 'l\'événement' : 'l\'actualité'}...`}
                   />
                 </div>
                 
@@ -449,7 +401,7 @@ const CreateContent = () => {
                     required
                     rows={8}
                     className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FFD700] focus:border-transparent text-gray-800 placeholder-gray-500 resize-none"
-                    placeholder="Décrivez en détail le contenu de votre publication..."
+                    placeholder={`Rédigez le contenu complet de votre ${postType}...`}
                   />
                 </div>
                 
@@ -468,6 +420,10 @@ const CreateContent = () => {
                       <option value="social">Social</option>
                       <option value="économique">Économique</option>
                       <option value="culturel">Culturel</option>
+                      <option value="éducation">Éducation</option>
+                      <option value="santé">Santé</option>
+                      <option value="environnement">Environnement</option>
+                      <option value="autre">Autre</option>
                     </select>
                   </div>
                   
@@ -482,7 +438,7 @@ const CreateContent = () => {
                       value={formData.tags}
                       onChange={handleChange}
                       className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FFD700] focus:border-transparent text-gray-800 placeholder-gray-500"
-                      placeholder="séparés par des virgules"
+                      placeholder="séparés par des virgules (ex: actualité, politique, élections)"
                     />
                   </div>
                 </div>
@@ -490,280 +446,189 @@ const CreateContent = () => {
             </div>
           </div>
 
-          {/* Détails de l'événement */}
-          {contentType === 'événement' && (
+          {/* Section Événement (uniquement si type = événement) */}
+          {postType === 'événement' && (
             <div className="relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl opacity-0 group-hover:opacity-10 blur transition duration-1000 group-hover:duration-200"></div>
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl opacity-0 group-hover:opacity-10 blur transition duration-1000 group-hover:duration-200"></div>
               
-              <div className="relative bg-gradient-to-br from-blue-50/80 to-blue-100/60 backdrop-blur-sm rounded-2xl border border-blue-200/50 shadow-xl p-6">
+              <div className="relative bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl border border-white/20 shadow-xl p-6">
                 <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-blue-600" />
-                  Détails de l'événement
+                  <Calendar className="w-5 h-5 text-purple-600" />
+                  Informations sur l'événement
                 </h2>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Date et heure *
-                    </label>
-                    <input
-                      type="datetime-local"
-                      name="eventDate"
-                      value={eventData.eventDate}
-                      onChange={handleChange}
-                      required
-                      className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Type d'événement
-                    </label>
-                    <select
-                      name="eventType"
-                      value={eventData.eventType}
-                      onChange={handleChange}
-                      className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 appearance-none"
-                    >
-                      <option value="meeting">Réunion</option>
-                      <option value="manifestation">Manifestation</option>
-                      <option value="conférence">Conférence</option>
-                      <option value="assemblée">Assemblée</option>
-                      <option value="action_sociale">Action sociale</option>
-                    </select>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                        <Calendar className="w-4 h-4" />
+                        Date de l'événement *
+                      </label>
+                      <input
+                        type="date"
+                        name="eventDate"
+                        value={formData.eventDate}
+                        onChange={handleChange}
+                        required
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-800"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        Heure (optionnel)
+                      </label>
+                      <input
+                        type="time"
+                        name="eventTime"
+                        value={formData.eventTime}
+                        onChange={handleChange}
+                        className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-800"
+                      />
+                    </div>
                   </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                       <MapPin className="w-4 h-4" />
-                      Lieu *
+                      Lieu de l'événement *
                     </label>
                     <input
                       type="text"
                       name="eventLocation"
-                      value={eventData.eventLocation}
+                      value={formData.eventLocation}
                       onChange={handleChange}
                       required
-                      className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 placeholder-gray-500"
-                      placeholder="Ex: Maison des jeunes"
+                      className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-800 placeholder-gray-500"
+                      placeholder="Ex: Salle des fêtes, Parc municipal, etc."
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Ville *
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      <Home className="w-4 h-4" />
+                      Adresse complète *
                     </label>
                     <input
                       type="text"
-                      name="eventCity"
-                      value={eventData.eventCity}
+                      name="eventAddress"
+                      value={formData.eventAddress}
                       onChange={handleChange}
                       required
-                      className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 placeholder-gray-500"
-                      placeholder="Ex: Cotonou"
+                      className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-800 placeholder-gray-500"
+                      placeholder="Numéro, rue, code postal"
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Département
-                    </label>
-                    <input
-                      type="text"
-                      name="eventDepartment"
-                      value={eventData.eventDepartment}
-                      onChange={handleChange}
-                      className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 placeholder-gray-500"
-                      placeholder="Ex: Littoral"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Date de fin (optionnel)
-                    </label>
-                    <input
-                      type="datetime-local"
-                      name="eventEndDate"
-                      value={eventData.eventEndDate}
-                      onChange={handleChange}
-                      className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
-                    />
-                  </div>
-                  
-                  <div className="md:col-span-2">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        name="registrationRequired"
-                        checked={eventData.registrationRequired}
-                        onChange={handleChange}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
-                      />
-                      <span className="text-sm text-gray-700">Inscription requise</span>
-                    </label>
-                  </div>
-                  
-                  {eventData.registrationRequired && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Nombre maximum de participants
+                        Ville (optionnel)
                       </label>
                       <input
-                        type="number"
-                        name="maxParticipants"
-                        value={eventData.maxParticipants}
+                        type="text"
+                        name="eventCity"
+                        value={formData.eventCity}
                         onChange={handleChange}
-                        min="1"
-                        className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
-                        placeholder="Ex: 50"
+                        className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-800"
+                        placeholder="Ville"
                       />
                     </div>
-                  )}
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                        <Phone className="w-4 h-4" />
+                        Contact (optionnel)
+                      </label>
+                      <input
+                        type="text"
+                        name="eventContact"
+                        value={formData.eventContact}
+                        onChange={handleChange}
+                        className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-800"
+                        placeholder="Téléphone ou email"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Upload d'images */}
+          {/* Upload d'image */}
           <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl opacity-0 group-hover:opacity-10 blur transition duration-1000 group-hover:duration-200"></div>
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl opacity-0 group-hover:opacity-10 blur transition duration-1000 group-hover:duration-200"></div>
             
             <div className="relative bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl border border-white/20 shadow-xl p-6">
               <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <Image className="w-5 h-5 text-purple-600" />
-                Images (optionnel)
+                <ImageIcon className="w-5 h-5 text-blue-600" />
+                Image d'illustration (optionnel)
               </h2>
               
               <input
                 type="file"
                 ref={imageInputRef}
-                multiple
                 accept="image/*"
                 onChange={handleImageSelect}
                 className="hidden"
               />
               
-              <button
-                type="button"
-                onClick={() => imageInputRef.current.click()}
-                className="w-full p-6 border-2 border-dashed border-gray-300/50 rounded-xl hover:border-gray-400 hover:bg-gray-50/50 transition-all duration-300 mb-4 group/upload"
-              >
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-3 text-white">
-                    <Upload className="w-6 h-6" />
-                  </div>
-                  <p className="font-medium text-gray-800">Cliquez pour ajouter des images</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    JPG, PNG, GIF • Max 5MB • Converties en base64
-                  </p>
-                </div>
-              </button>
-              
-              {imagePreviews.length > 0 && (
-                <div>
-                  <h3 className="font-medium text-gray-700 mb-3">
-                    Images à uploader ({imagePreviews.length})
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {imagePreviews.map((preview, index) => (
-                      <div key={index} className="relative group/image">
-                        <img
-                          src={preview.url}
-                          alt={preview.name}
-                          className="w-full h-32 object-cover rounded-xl border border-gray-300/50 group-hover/image:shadow-lg transition-shadow"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute top-2 right-2 bg-gradient-to-br from-red-500 to-red-600 text-white p-1.5 rounded-full text-xs hover:scale-110 transition-transform"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 rounded-b-xl">
-                          <p className="text-xs text-white truncate">
-                            {preview.name}
-                          </p>
-                          <p className="text-xs text-gray-300">
-                            {formatFileSize(preview.size)}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-sm text-blue-600 mt-3">
-                    ⓘ Ces images seront converties en base64 et stockées dans MongoDB
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Upload de fichiers */}
-          <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl opacity-0 group-hover:opacity-10 blur transition duration-1000 group-hover:duration-200"></div>
-            
-            <div className="relative bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl border border-white/20 shadow-xl p-6">
-              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <File className="w-5 h-5 text-green-600" />
-                Documents (optionnel)
-              </h2>
-              
-              <input
-                type="file"
-                ref={fileInputRef}
-                multiple
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              
-              <button
-                type="button"
-                onClick={() => fileInputRef.current.click()}
-                className="w-full p-6 border-2 border-dashed border-gray-300/50 rounded-xl hover:border-gray-400 hover:bg-gray-50/50 transition-all duration-300 mb-4 group/upload"
-              >
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-3 text-white">
-                    <Upload className="w-6 h-6" />
-                  </div>
-                  <p className="font-medium text-gray-800">Ajouter des documents</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    PDF, Word, Excel, PowerPoint, TXT
-                  </p>
-                </div>
-              </button>
-              
-              {selectedFiles.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="font-medium text-gray-700">
-                    Fichiers ({selectedFiles.length})
-                  </h3>
-                  {selectedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50/50 to-gray-100/50 rounded-xl border border-gray-300/30 hover:border-gray-400/50 transition-all duration-300">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white">
-                          <File className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-800">{file.name}</p>
-                          <p className="text-sm text-gray-500">
-                            {formatFileSize(file.size)}
-                          </p>
-                        </div>
-                      </div>
+              <div className="space-y-4">
+                {imagePreview ? (
+                  <div className="space-y-4">
+                    <div className="relative group/image">
+                      <img
+                        src={imagePreview.url}
+                        alt={imagePreview.name}
+                        className="w-full h-64 object-cover rounded-xl border border-gray-300/50 group-hover/image:shadow-lg transition-shadow"
+                      />
                       <button
                         type="button"
-                        onClick={() => removeFile(index)}
-                        className="text-red-600 hover:text-red-800 text-sm font-medium hover:scale-110 transition-transform"
+                        onClick={removeImage}
+                        className="absolute top-4 right-4 bg-gradient-to-br from-red-500 to-red-600 text-white p-2 rounded-full hover:scale-110 transition-transform"
                       >
-                        Retirer
+                        <X className="w-4 h-4" />
                       </button>
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 rounded-b-xl">
+                        <p className="text-sm text-white font-medium truncate">
+                          {imagePreview.name}
+                        </p>
+                        <p className="text-xs text-gray-300">
+                          {formatFileSize(imagePreview.size)} • Cliquez pour changer d'image
+                        </p>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current.click()}
+                      className="w-full p-4 border-2 border-dashed border-blue-300/50 text-blue-600 rounded-xl hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-300 font-medium"
+                    >
+                      Changer d'image
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current.click()}
+                    className="w-full p-8 border-2 border-dashed border-gray-300/50 rounded-xl hover:border-gray-400 hover:bg-gray-50/50 transition-all duration-300 group/upload"
+                  >
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-white">
+                        <Upload className="w-8 h-8" />
+                      </div>
+                      <p className="font-medium text-gray-800 text-lg">Ajouter une image</p>
+                      <p className="text-sm text-gray-500 mt-2">
+                        JPG, PNG, GIF • Max 5MB • Stockée en base64
+                      </p>
+                      <p className="text-xs text-blue-600 mt-3">
+                        ⓘ Vous ne pouvez sélectionner qu'une seule image
+                      </p>
+                    </div>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -790,15 +655,54 @@ const CreateContent = () => {
               ) : (
                 <>
                   <Plus className="w-5 h-5" />
-                  Publier {contentType}
+                  Publier {postType === 'événement' ? "l'événement" : "l'actualité"}
                 </>
               )}
             </button>
           </div>
         </form>
       </div>
+
+      {/* Modal de succès */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+          <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-8 max-w-md mx-4 shadow-2xl animate-slideUp">
+            <div className="text-center">
+              <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
+                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">Succès !</h3>
+              <p className="text-gray-600 mb-6">
+                Votre {postType} a été publié avec succès.
+              </p>
+              <div className="mb-6">
+                <div className="text-sm text-gray-500 mb-2">Redirection automatique dans :</div>
+                <div className="text-4xl font-bold text-[#003366] animate-pulse">
+                  {redirectCount}
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={cancelRedirect}
+                  className="flex-1 px-4 py-3 border border-gray-300/50 text-gray-700 rounded-xl hover:bg-gray-50/50 transition-all duration-300 font-medium"
+                >
+                  Rester ici
+                </button>
+                <button
+                  onClick={handleRedirect}
+                  className="flex-1 bg-gradient-to-r from-[#003366] to-[#004488] text-white font-semibold py-3 rounded-xl hover:shadow-lg transition-all duration-300"
+                >
+                  Voir toutes les publications
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default CreateContent;
+export default CreateActualite;

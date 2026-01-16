@@ -4,7 +4,7 @@ import { postService } from '../../services/postService';
 import { authService } from '../../services/api';
 import * as LucideIcons from 'lucide-react';
 
-// Extraire les icônes nécessaires
+// Extraire les icônes nécessaires avec la syntaxe correcte
 const {
   ArrowLeft,
   Search,
@@ -343,7 +343,7 @@ const ManagePosts = () => {
                     : 'Commencez par créer votre première publication'}
                 </p>
                 <Link
-                  to="/admin/content/create"
+                  to="/admin/evenements"
                   className="inline-flex items-center bg-gradient-to-r from-[#FFD700] to-[#FFAA00] text-[#003366] font-semibold px-5 py-2.5 rounded-xl hover:shadow-lg hover:shadow-[#FFD700]/20 transition-all duration-300"
                 >
                   <Plus className="w-5 h-5 mr-2" />
@@ -442,8 +442,6 @@ const ManagePosts = () => {
                           <td className="p-4">
                             <div className="space-y-1">
                               <div className="flex items-center gap-3 text-sm text-gray-700">
-                                <span title="J'aime">👍 {post.likes?.length || 0}</span>
-                                <span title="Je n'aime pas">👎 {post.dislikes?.length || 0}</span>
                                 <span title="Vues">👁️ {post.viewCount || 0}</span>
                               </div>
                               <div className="text-xs text-gray-500">
@@ -493,8 +491,8 @@ const ManagePosts = () => {
 
       {/* Modal de suppression */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
-          <div className="relative bg-gradient-to-br from-white/90 to-white/80 backdrop-blur-lg rounded-2xl p-6 max-w-md w-full animate-scaleIn border border-white/20 shadow-2xl">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="relative bg-gradient-to-br from-white/90 to-white/80 backdrop-blur-lg rounded-2xl p-6 max-w-md w-full border border-white/20 shadow-2xl">
             <h3 className="text-xl font-bold text-gray-800 mb-4">
               Confirmer la suppression
             </h3>
@@ -523,37 +521,6 @@ const ManagePosts = () => {
           </div>
         </div>
       )}
-
-      {/* Styles d'animation */}
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-        
-        @keyframes scaleIn {
-          from {
-            opacity: 0;
-            transform: scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-        
-        .animate-fadeIn {
-          animation: fadeIn 0.2s ease-out;
-        }
-        
-        .animate-scaleIn {
-          animation: scaleIn 0.3s ease-out;
-        }
-      `}</style>
     </div>
   );
 };

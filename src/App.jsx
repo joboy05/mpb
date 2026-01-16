@@ -9,6 +9,7 @@ import NotFound404 from './pages/NotFound404';
 import NewsList from './pages/NewsList';
 import NewsDetail from './pages/NewsDetail';
 import RegisterPage from './pages/RegisterPage';
+import CompleteProfile from './pages/users/CompleteProfile';
 import PrivateRoute from './components/Auth/PrivateRoute';
 import AdminRoute from './components/Auth/AdminRoutes';
 import AdminDashboard from './pages/admin/Dashboard';
@@ -16,6 +17,9 @@ import CreateContent from './pages/admin/CreateContent';
 import UserDashboard from './pages/users/Dashboard';
 import ManagePosts from './pages/admin/ManagePost';
 import EditContent from './pages/admin/EditContent';
+import Membres from './pages/admin/Membres';
+import ArticleDetail from './pages/ArticleDetail';
+import AdminProfile from './pages/admin/AdminProfile';
 
 // Créez un composant LoginPage ou supprimez cette route si vous ne l'avez pas encore
 // import LoginPage from './pages/LoginPage';
@@ -26,10 +30,13 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/login" element={<JoinMovement />} />
         <Route path="/rejoindre" element={<JoinMovement />} />
+        <Route path="/profile/complete" element={<CompleteProfile />} />
         <Route path="/verify-member" element={<VerifyMember />} />
         <Route path="/actualites" element={<NewsList />} />
-        <Route path="/actualites/:slug" element={<NewsDetail />} />
+        {/* <Route path="/actualites/:slug" element={<NewsDetail />} /> */}
+        <Route path="/actualites/:id" element={<ArticleDetail />} />
 <Route path="/users/dashboard" element={
   <PrivateRoute>
     <UserDashboard />
@@ -40,16 +47,21 @@ function App() {
     <MemberCard />
   </PrivateRoute>
 } />
-<Route path="/admin/dashboard" element={
+        <Route path="/admin/dashboard" element={
           <AdminRoute>
             <AdminDashboard />
+          </AdminRoute>
+        } />
+        <Route path="/admin/profile" element={
+          <AdminRoute>
+            <AdminProfile />
           </AdminRoute>
         } />
         
         {/* Autres routes admin (à créer plus tard) */}
         <Route path="/admin/membres" element={
           <AdminRoute>
-            <div>Gestion des membres (à implémenter)</div>
+            <Membres />
           </AdminRoute>
         } />
         <Route path="/admin/evenements" element={

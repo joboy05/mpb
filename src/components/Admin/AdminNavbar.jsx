@@ -106,7 +106,7 @@ const AdminNavbar = ({ admin, searchQuery, setSearchQuery, handleSearch, handleL
                             <UserCog className="w-4 h-4 mr-2" />
                             Mon profil
                           </Link>
-                          <Link 
+                          {/*<Link 
                             to="/admin/notifications" 
                             className="flex items-center px-4 py-3 text-sm text-white hover:bg-[#0055AA]/50 hover:text-[#FFD700] transition-all duration-300"
                             onClick={() => setShowUserMenu(false)}
@@ -121,7 +121,7 @@ const AdminNavbar = ({ admin, searchQuery, setSearchQuery, handleSearch, handleL
                           >
                             <Mail className="w-4 h-4 mr-2" />
                             Messages
-                          </Link>
+                          </Link>*/}
                           <hr className="my-2 border-[#FFD700]/20" />
                           <button
                             onClick={handleLogout}

@@ -1,28 +1,28 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, ArrowRight, Check, Phone, Loader } from 'lucide-react';
+import { UserPlus, ArrowRight, Check, Phone, Loader, Shield, CheckCircle } from 'lucide-react';
 import CountrySelect from './CountrySelect';
 import BeninLocation from './BeninLocation';
-import YearSelect from './YearSelect';
-import { authService } from '../../services/api'; // Import du service Axios
+import { authService } from '../../services/api';
 
 const MemberForm = () => {
   const navigate = useNavigate();
-  const currentYear = new Date().getFullYear();
   
   const [formData, setFormData] = useState({
     nom: '',
     prenom: '',
     email: '',
-    phoneCode: '+229',
+    code_telephone: '+229', // Changé de phoneCode à code_telephone
     telephone: '',
-    birthYear: '',
+    age: '', // Changé de birthYear à age
     pays: 'Bénin',
-    department: '',
+    departement: '', // Changé de department à departement
     commune: '',
     disponibilite: '',
     profession: '',
     motivation: '',
+    engagement_valeurs_mpb: false, // Nouveau champ
+    consentement_donnees: false, // Nouveau champ
     password: '',
     confirmPassword: ''
   });
@@ -31,10 +31,10 @@ const MemberForm = () => {
   const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
@@ -45,7 +45,7 @@ const MemberForm = () => {
     setFormData(prev => ({
       ...prev,
       pays: countryName,
-      department: '',
+      departement: '',
       commune: ''
     }));
   };
@@ -53,14 +53,14 @@ const MemberForm = () => {
   const handlePhoneCodeChange = (phoneCode) => {
     setFormData(prev => ({
       ...prev,
-      phoneCode
+      code_telephone: phoneCode
     }));
   };
 
   const handleDepartmentChange = (department) => {
     setFormData(prev => ({
       ...prev,
-      department,
+      departement: department,
       commune: ''
     }));
   };
@@ -72,41 +72,47 @@ const MemberForm = () => {
     }));
   };
 
-  const calculateAge = (birthYear) => {
-    if (!birthYear) return null;
-    return currentYear - parseInt(birthYear);
-  };
-
   const validateForm = () => {
     const newErrors = {};
     
+    // Validation nom
     if (!formData.nom.trim()) newErrors.nom = 'Le nom est requis';
     else if (formData.nom.trim().length < 2) newErrors.nom = 'Minimum 2 caractères';
     
+    // Validation prénom
     if (!formData.prenom.trim()) newErrors.prenom = 'Le prénom est requis';
     else if (formData.prenom.trim().length < 2) newErrors.prenom = 'Minimum 2 caractères';
     
+    // Validation email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email.trim()) newErrors.email = 'L\'email est requis';
     else if (!emailRegex.test(formData.email)) newErrors.email = 'Format d\'email invalide';
     
+    // Validation téléphone
     if (!formData.telephone.trim()) newErrors.telephone = 'Le téléphone est requis';
     
-    const birthYear = parseInt(formData.birthYear);
-    const age = calculateAge(formData.birthYear);
-    if (!formData.birthYear) newErrors.birthYear = 'L\'année de naissance est requise';
-    else if (isNaN(birthYear) || birthYear < 1900 || birthYear > currentYear) {
-      newErrors.birthYear = `Année invalide (1900-${currentYear})`;
-    } else if (age < 16) newErrors.birthYear = 'Minimum 16 ans';
+    // Validation âge (CHANGÉ)
+    if (!formData.age) newErrors.age = 'L\'âge est requis';
+    else {
+      const ageNum = parseInt(formData.age);
+      if (isNaN(ageNum) || ageNum < 16 || ageNum > 100) {
+        newErrors.age = 'Âge invalide (16-100 ans)';
+      }
+    }
     
+    // Validation localisation
     if (formData.pays === 'Bénin') {
-      if (!formData.department) newErrors.department = 'Le département est requis';
+      if (!formData.departement) newErrors.departement = 'Le département est requis';
       if (!formData.commune) newErrors.commune = 'La commune est requise';
-    } else if (!formData.commune.trim()) newErrors.commune = 'La ville/région est requise';
+    } else if (!formData.commune.trim()) {
+      newErrors.commune = 'La ville/région est requise';
+    }
     
+    // Validation profession et disponibilité
     if (!formData.profession) newErrors.profession = 'La profession est requise';
     if (!formData.disponibilite) newErrors.disponibilite = 'La disponibilité est requise';
     
+    // Validation mots de passe
     if (!formData.password) newErrors.password = 'Le mot de passe est requis';
     else if (formData.password.length < 8) newErrors.password = 'Minimum 8 caractères';
     
@@ -115,8 +121,17 @@ const MemberForm = () => {
       newErrors.confirmPassword = 'Les mots de passe ne correspondent pas';
     }
     
+    // Validation motivation
     if (!formData.motivation.trim()) newErrors.motivation = 'La motivation est requise';
     else if (formData.motivation.trim().length < 20) newErrors.motivation = 'Minimum 20 caractères';
+    
+    // Validation consentements (NOUVEAU)
+    if (!formData.engagement_valeurs_mpb) {
+      newErrors.engagement_valeurs_mpb = 'Vous devez accepter les valeurs du MPB';
+    }
+    if (!formData.consentement_donnees) {
+      newErrors.consentement_donnees = 'Vous devez consentir à l\'utilisation de vos données';
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -130,20 +145,22 @@ const MemberForm = () => {
     setLoading(true);
     
     try {
-      // Préparer les données pour l'API
+      // Préparer les données pour l'API (avec les nouveaux champs)
       const memberData = {
         nom: formData.nom.trim(),
         prenom: formData.prenom.trim(),
         email: formData.email.trim().toLowerCase(),
-        phoneCode: formData.phoneCode,
+        code_telephone: formData.code_telephone,
         telephone: formData.telephone.trim(),
-        birthYear: parseInt(formData.birthYear),
+        age: parseInt(formData.age), // CHANGÉ
         pays: formData.pays,
-        department: formData.department,
+        departement: formData.departement, // CHANGÉ
         commune: formData.commune,
         profession: formData.profession,
         disponibilite: formData.disponibilite,
         motivation: formData.motivation.trim(),
+        engagement_valeurs_mpb: formData.engagement_valeurs_mpb, // NOUVEAU
+        consentement_donnees: formData.consentement_donnees, // NOUVEAU
         password: formData.password
       };
       
@@ -154,16 +171,16 @@ const MemberForm = () => {
       authService.saveAuthData(result.token, result.member);
       
       // Message de succès
-      alert(`🎉 Inscription réussie !\nBienvenue ${result.member.prenom} !\nNuméro de membre: ${result.member.membershipNumber}`);
+      alert(`🎉 Inscription réussie !\nBienvenue ${result.member.prenom} !\nNuméro de membre: ${result.member.memberId}`);
       
-      // Rediriger
+      // Rediriger vers la carte de membre
       navigate('/carte-membre', { state: { memberData: result.member } });
       
     } catch (error) {
       console.error('Erreur inscription:', error);
       
-      // Gérer les erreurs spécifiques d'Axios
-      if (error.message.includes('déjà utilisé') || error.message?.includes('email')) {
+      // Gérer les erreurs spécifiques
+      if (error.message?.includes('déjà utilisé') || error.message?.includes('email')) {
         setErrors({ email: 'Cet email est déjà utilisé' });
       } else if (error.message) {
         alert(error.message || "Erreur d'inscription");
@@ -253,7 +270,7 @@ const MemberForm = () => {
             </label>
             <div className="flex">
               <div className="inline-flex items-center px-4 border border-r-0 border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 rounded-l-lg font-medium min-w-[100px]">
-                {formData.phoneCode}
+                {formData.code_telephone}
               </div>
               <input type="tel" name="telephone" value={formData.telephone} onChange={handleChange}
                 placeholder="XX XX XX XX"
@@ -264,26 +281,23 @@ const MemberForm = () => {
             {errors.telephone && <p className="mt-1 text-sm text-red-600">{errors.telephone}</p>}
           </div>
 
-          {/* Année de naissance */}
+          {/* Âge (CHANGÉ) */}
           <div className="group">
-            <YearSelect
-              value={formData.birthYear}
-              onChange={(year) => {
-                setFormData(prev => ({ ...prev, birthYear: year }));
-                if (errors.birthYear) setErrors(prev => ({ ...prev, birthYear: '' }));
-              }}
-              label="Année de naissance *"
-              minAge={18}
-            />
-            {errors.birthYear && <p className="mt-1 text-sm text-red-600">{errors.birthYear}</p>}
+            <label className="block text-sm font-medium text-gray-700 mb-2">Âge *</label>
+            <input type="number" name="age" value={formData.age} onChange={handleChange}
+              min="16" max="100"
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
+                errors.age ? 'border-red-300' : 'border-gray-300'
+              }`} placeholder="Votre âge" />
+            {errors.age && <p className="mt-1 text-sm text-red-600">{errors.age}</p>}
             
-            {formData.birthYear && !errors.birthYear && (
+            {formData.age && !errors.age && (
               <div className="mt-2 text-sm text-gray-600">
                 <span className="font-medium">Âge : </span>
                 <span className="text-[#003366] font-semibold">
-                  {calculateAge(formData.birthYear)} ans
+                  {formData.age} ans
                 </span>
-                {calculateAge(formData.birthYear) < 18 && (
+                {parseInt(formData.age) < 18 && (
                   <span className="ml-2 text-yellow-600 text-xs bg-yellow-50 px-2 py-1 rounded">
                     Mineur
                   </span>
@@ -295,7 +309,7 @@ const MemberForm = () => {
           {/* Localisation Bénin */}
           {formData.pays === 'Bénin' && (
             <BeninLocation
-              department={formData.department}
+              department={formData.departement}
               commune={formData.commune}
               onDepartmentChange={handleDepartmentChange}
               onCommuneChange={handleCommuneChange}
@@ -383,22 +397,61 @@ const MemberForm = () => {
             {errors.motivation && <p className="mt-1 text-sm text-red-600">{errors.motivation}</p>}
           </div>
 
-          {/* Confidentialité */}
-          <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg p-4 border border-yellow-200">
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 bg-gradient-to-br from-yellow-400 to-yellow-300 rounded-full flex items-center justify-center flex-shrink-0">
-                <Check className="w-4 h-4 text-white" />
+          {/* Consentements (NOUVEAU) */}
+          <div className="space-y-4">
+            <div className={`p-4 rounded-lg border transition-colors ${
+              errors.engagement_valeurs_mpb ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'
+            }`}>
+              <div className="flex items-start gap-3">
+                <input type="checkbox" id="engagement_valeurs_mpb" 
+                  name="engagement_valeurs_mpb"
+                  checked={formData.engagement_valeurs_mpb}
+                  onChange={handleChange}
+                  className="w-5 h-5 text-[#003366] border-gray-300 rounded focus:ring-[#003366] mt-1 flex-shrink-0" />
+                <div className="flex-1">
+                  <label htmlFor="engagement_valeurs_mpb" className="text-gray-700 font-medium flex items-center gap-2">
+                    <Shield className="w-4 h-4" />
+                    Engagement aux valeurs du MPB *
+                  </label>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Je m'engage à respecter et promouvoir les valeurs du Mouvement Patriotique du Bénin : 
+                    Patrie, Jeunesse, Pouvoir, Intégrité et Développement.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h4 className="font-semibold text-yellow-800 mb-1">Confidentialité garantie</h4>
-                <p className="text-sm text-yellow-700/80">
-                  Vos informations sont sécurisées et utilisées uniquement pour votre adhésion au mouvement.
-                </p>
+              {errors.engagement_valeurs_mpb && (
+                <p className="mt-2 text-sm text-red-600">{errors.engagement_valeurs_mpb}</p>
+              )}
+            </div>
+            
+            <div className={`p-4 rounded-lg border transition-colors ${
+              errors.consentement_donnees ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'
+            }`}>
+              <div className="flex items-start gap-3">
+                <input type="checkbox" id="consentement_donnees" 
+                  name="consentement_donnees"
+                  checked={formData.consentement_donnees}
+                  onChange={handleChange}
+                  className="w-5 h-5 text-[#003366] border-gray-300 rounded focus:ring-[#003366] mt-1 flex-shrink-0" />
+                <div className="flex-1">
+                  <label htmlFor="consentement_donnees" className="text-gray-700 font-medium flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4" />
+                    Consentement à l'utilisation des données *
+                  </label>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Je consens à ce que mes informations personnelles soient utilisées uniquement 
+                    pour mon adhésion au mouvement, la communication interne et les activités du MPB.
+                    Mes données seront protégées conformément à la loi sur la protection des données.
+                  </p>
+                </div>
               </div>
+              {errors.consentement_donnees && (
+                <p className="mt-2 text-sm text-red-600">{errors.consentement_donnees}</p>
+              )}
             </div>
           </div>
 
-          {/* Conditions */}
+          {/* Conditions générales */}
           <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
             <input type="checkbox" id="conditions"
               className="w-5 h-5 text-[#003366] border-gray-300 rounded focus:ring-[#003366] mt-1 flex-shrink-0" required />

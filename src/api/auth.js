@@ -8,7 +8,7 @@ export const authAPI = {
   // Connexion
   login: async (loginData) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, loginData);
+      const response = await axios.post(`${API_BASE_URL}/auth/rejoindre`, loginData);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Erreur de connexion' };

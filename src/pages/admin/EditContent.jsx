@@ -7,68 +7,48 @@ import * as LucideIcons from 'lucide-react';
 // Extraire les icônes nécessaires
 const {
   ArrowLeft,
-  Calendar,
   FileText,
-  Users,
   Upload,
   X,
-  Image,
-  File,
+  Image: ImageIcon,
   Save,
   Tag,
-  MapPin,
   Trash2,
   Eye
 } = LucideIcons;
 
-const EditContent = () => {
+const EditActualite = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [contentType, setContentType] = useState('événement');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
   const imageInputRef = useRef(null);
-  const fileInputRef = useRef(null);
   
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    type: 'événement',
     category: 'politique',
     tags: '',
-    featured: false
+    featured: false,
+    status: 'publié'
   });
   
-  const [eventData, setEventData] = useState({
-    eventType: 'meeting',
-    eventDate: '',
-    eventEndDate: '',
-    eventLocation: '',
-    eventCity: '',
-    eventDepartment: '',
-    registrationRequired: false,
-    maxParticipants: ''
-  });
-  
-  const [existingImages, setExistingImages] = useState([]);
-  const [imagesToDelete, setImagesToDelete] = useState([]);
-  const [selectedImages, setSelectedImages] = useState([]);
-  const [selectedFiles, setSelectedFiles] = useState([]);
-  const [imagePreviews, setImagePreviews] = useState([]);
+  const [existingImage, setExistingImage] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [imageToDelete, setImageToDelete] = useState(false);
 
-  // Nettoyer les URLs des prévisualisations à la destruction du composant
+  // Nettoyer l'URL de prévisualisation
   useEffect(() => {
     return () => {
-      imagePreviews.forEach(preview => {
-        if (preview?.url) {
-          URL.revokeObjectURL(preview.url);
-        }
-      });
+      if (imagePreview?.url && !imagePreview.isExisting) {
+        URL.revokeObjectURL(imagePreview.url);
+      }
     };
-  }, [imagePreviews]);
+  }, [imagePreview]);
 
   // Charger la publication à modifier
   useEffect(() => {
@@ -83,9 +63,9 @@ const EditContent = () => {
         setLoading(true);
         setError('');
         
-        const response = await postService.getPost(id, true); // true pour les images complètes
+        const response = await postService.getPost(id);
         
-        console.log('📋 Publication chargée:', response);
+        console.log('📋 Actualité chargée:', response);
         
         if (response.success && response.post) {
           const post = response.post;
@@ -94,51 +74,34 @@ const EditContent = () => {
           setFormData({
             title: post.title || '',
             content: post.content || '',
-            type: post.type || 'événement',
             category: post.category || 'politique',
             tags: post.tags ? post.tags.join(', ') : '',
-            featured: post.featured || false
+            featured: post.featured || false,
+            status: post.status || 'publié'
           });
           
-          setContentType(post.type || 'événement');
-          
-          // Remplir les données d'événement si c'est un événement
-          if (post.type === 'événement' && post.eventData) {
-            setEventData({
-              eventType: post.eventData.eventType || 'meeting',
-              eventDate: post.eventData.eventDate || '',
-              eventEndDate: post.eventData.eventEndDate || '',
-              eventLocation: post.eventData.eventLocation || '',
-              eventCity: post.eventData.eventCity || '',
-              eventDepartment: post.eventData.eventDepartment || '',
-              registrationRequired: post.eventData.registrationRequired || false,
-              maxParticipants: post.eventData.maxParticipants || ''
-            });
-          }
-          
-          // Gérer les images existantes
+          // Gérer l'image existante
           if (post.images && post.images.length > 0) {
-            setExistingImages(post.images);
-            
-            // Créer des prévisualisations pour les images existantes
-            const previews = post.images.map(img => ({
-              url: img.base64 || img.thumbnailBase64 || `http://localhost:5000${img.url}`,
-              name: img.filename || `image_${img._id}`,
-              size: 0, // Taille inconnue pour les images existantes
-              type: img.mimetype || 'image/jpeg',
-              isExisting: true,
-              id: img._id
-            }));
-            
-            setImagePreviews(previews);
+            const mainImage = post.images.find(img => img.isMain) || post.images[0];
+            if (mainImage) {
+              setExistingImage(mainImage);
+              setImagePreview({
+                url: mainImage.thumbnailBase64 || mainImage.base64,
+                name: mainImage.filename || `image_${mainImage._id}`,
+                size: mainImage.size || 0,
+                type: mainImage.mimetype || 'image/jpeg',
+                isExisting: true,
+                id: mainImage._id
+              });
+            }
           }
           
         } else {
-          setError(response.message || 'Publication non trouvée');
+          setError(response.message || 'Actualité non trouvée');
         }
       } catch (err) {
-        console.error('❌ Erreur chargement publication:', err);
-        setError(err.message || 'Erreur de chargement de la publication');
+        console.error('❌ Erreur chargement actualité:', err);
+        setError(err.message || 'Erreur de chargement de l\'actualité');
       } finally {
         setLoading(false);
       }
@@ -149,110 +112,91 @@ const EditContent = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    if (name.startsWith('event')) {
-      setEventData(prev => ({
-        ...prev,
-        [name]: type === 'checkbox' ? checked : value
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: type === 'checkbox' ? checked : value
-      }));
-    }
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
     setError('');
   };
 
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files);
-    const newImages = [];
-    const newPreviews = [];
     
-    files.forEach((file) => {
-      if (file.size > 5 * 1024 * 1024) {
-        setError(`L'image "${file.name}" est trop grande (max 5MB)`);
-        return;
-      }
-      
-      if (!file.type.startsWith('image/')) {
-        setError(`Le fichier "${file.name}" n'est pas une image valide`);
-        return;
-      }
-      
-      newImages.push(file);
-      const previewUrl = URL.createObjectURL(file);
-      newPreviews.push({
-        url: previewUrl,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        isExisting: false
-      });
+    if (files.length === 0) return;
+    
+    const file = files[0]; // Prendre seulement le premier fichier
+    
+    // Vérifier la taille
+    if (file.size > 5 * 1024 * 1024) {
+      setError(`L'image "${file.name}" est trop grande (max 5MB)`);
+      return;
+    }
+    
+    // Vérifier le type
+    if (!file.type.startsWith('image/')) {
+      setError(`Le fichier "${file.name}" n'est pas une image valide`);
+      return;
+    }
+    
+    // Nettoyer l'ancienne prévisualisation si elle existe
+    if (imagePreview?.url && !imagePreview.isExisting) {
+      URL.revokeObjectURL(imagePreview.url);
+    }
+    
+    // Marquer l'image existante pour suppression
+    if (existingImage) {
+      setImageToDelete(true);
+    }
+    
+    // Créer une nouvelle prévisualisation
+    const previewUrl = URL.createObjectURL(file);
+    setSelectedImage(file);
+    setImagePreview({
+      url: previewUrl,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      isExisting: false
     });
     
-    if (newImages.length > 0) {
-      setSelectedImages(prev => [...prev, ...newImages]);
-      setImagePreviews(prev => [...prev, ...newPreviews]);
-    }
+    setError('');
   };
 
-  const handleFileSelect = (e) => {
-    const files = Array.from(e.target.files);
-    const validFiles = [];
-    
-    files.forEach(file => {
-      if (file.size > 10 * 1024 * 1024) {
-        setError(`Le fichier "${file.name}" est trop grand (max 10MB)`);
-        return;
+  const removeImage = () => {
+    if (imagePreview) {
+      // Nettoyer l'URL si c'est une nouvelle image
+      if (!imagePreview.isExisting && imagePreview.url) {
+        URL.revokeObjectURL(imagePreview.url);
       }
       
-      const validExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt'];
-      const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
-      
-      if (!validExtensions.includes(fileExtension)) {
-        setError(`Type de fichier non supporté: ${file.name}`);
-        return;
-      }
-      
-      validFiles.push(file);
-    });
-    
-    if (validFiles.length > 0) {
-      setSelectedFiles(prev => [...prev, ...validFiles]);
-    }
-  };
-
-  const removeImage = (index) => {
-    const preview = imagePreviews[index];
-    
-    if (preview.isExisting) {
       // Marquer l'image existante pour suppression
-      setImagesToDelete(prev => [...prev, preview.id]);
-    } else {
-      // Nettoyer l'URL de la prévisualisation pour les nouvelles images
-      if (preview.url) {
-        URL.revokeObjectURL(preview.url);
+      if (imagePreview.isExisting) {
+        setImageToDelete(true);
       }
-      
-      // Retirer l'image de la liste des nouvelles images
-      const newImageIndex = imagePreviews
-        .slice(0, index)
-        .filter(p => !p.isExisting).length;
-      
-      setSelectedImages(prev => prev.filter((_, i) => i !== newImageIndex));
     }
     
-    // Retirer la prévisualisation
-    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+    setSelectedImage(null);
+    setImagePreview(null);
     
-    // Si c'était une image existante, la retirer aussi de la liste
-    if (preview.isExisting) {
-      setExistingImages(prev => prev.filter(img => img._id !== preview.id));
+    // Réinitialiser l'input file
+    if (imageInputRef.current) {
+      imageInputRef.current.value = '';
     }
   };
 
-  const removeFile = (index) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  const restoreExistingImage = () => {
+    if (existingImage) {
+      setImageToDelete(false);
+      setSelectedImage(null);
+      setImagePreview({
+        url: existingImage.thumbnailBase64 || existingImage.base64,
+        name: existingImage.filename || `image_${existingImage._id}`,
+        size: existingImage.size || 0,
+        type: existingImage.mimetype || 'image/jpeg',
+        isExisting: true,
+        id: existingImage._id
+      });
+    }
   };
 
   const formatFileSize = (bytes) => {
@@ -272,18 +216,6 @@ const EditContent = () => {
     
     if (!formData.content.trim()) {
       errors.push('Le contenu est requis');
-    }
-    
-    if (formData.type === 'événement') {
-      if (!eventData.eventDate) {
-        errors.push('La date de l\'événement est requise');
-      }
-      if (!eventData.eventLocation) {
-        errors.push('Le lieu de l\'événement est requis');
-      }
-      if (!eventData.eventCity) {
-        errors.push('La ville est requise');
-      }
     }
     
     return errors;
@@ -310,47 +242,22 @@ const EditContent = () => {
       // Ajouter les données principales
       formDataToSend.append('title', formData.title);
       formDataToSend.append('content', formData.content);
-      formDataToSend.append('type', formData.type);
       formDataToSend.append('category', formData.category);
       formDataToSend.append('featured', formData.featured);
+      formDataToSend.append('status', formData.status);
       
       if (formData.tags) {
         formDataToSend.append('tags', formData.tags);
       }
       
-      // Ajouter les données d'événement si nécessaire
-      if (formData.type === 'événement') {
-        formDataToSend.append('eventType', eventData.eventType);
-        formDataToSend.append('eventDate', eventData.eventDate);
-        formDataToSend.append('eventLocation', eventData.eventLocation);
-        formDataToSend.append('eventCity', eventData.eventCity);
-        
-        if (eventData.eventEndDate) {
-          formDataToSend.append('eventEndDate', eventData.eventEndDate);
-        }
-        if (eventData.eventDepartment) {
-          formDataToSend.append('eventDepartment', eventData.eventDepartment);
-        }
-        if (eventData.maxParticipants) {
-          formDataToSend.append('maxParticipants', eventData.maxParticipants);
-        }
-        formDataToSend.append('registrationRequired', eventData.registrationRequired);
+      // Gestion des images
+      if (imageToDelete && existingImage) {
+        formDataToSend.append('imageToDelete', existingImage._id);
       }
       
-      // Ajouter les images à supprimer
-      if (imagesToDelete.length > 0) {
-        formDataToSend.append('imagesToDelete', JSON.stringify(imagesToDelete));
+      if (selectedImage) {
+        formDataToSend.append('image', selectedImage);
       }
-      
-      // Ajouter les nouvelles images
-      selectedImages.forEach((image) => {
-        formDataToSend.append('newImages', image);
-      });
-      
-      // Ajouter les nouveaux fichiers
-      selectedFiles.forEach((file) => {
-        formDataToSend.append('newFiles', file);
-      });
       
       console.log('📤 Mise à jour des données...');
       
@@ -360,21 +267,19 @@ const EditContent = () => {
       console.log('✅ Réponse du serveur:', response);
       
       if (response.success) {
-        setSuccess('Publication mise à jour avec succès !');
+        setSuccess('Actualité mise à jour avec succès !');
         
-        // Nettoyer les prévisualisations des nouvelles images
-        imagePreviews.forEach(preview => {
-          if (!preview.isExisting && preview.url) {
-            URL.revokeObjectURL(preview.url);
-          }
-        });
+        // Nettoyer la prévisualisation
+        if (imagePreview && !imagePreview.isExisting && imagePreview.url) {
+          URL.revokeObjectURL(imagePreview.url);
+        }
         
         // Redirection après 2 secondes
         setTimeout(() => {
           navigate('/admin/posts');
         }, 2000);
       } else {
-        setError(response.message || 'Erreur lors de la mise à jour de la publication');
+        setError(response.message || 'Erreur lors de la mise à jour de l\'actualité');
       }
       
     } catch (err) {
@@ -386,7 +291,7 @@ const EditContent = () => {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette publication ? Cette action est irréversible.')) {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette actualité ? Cette action est irréversible.')) {
       return;
     }
     
@@ -394,7 +299,7 @@ const EditContent = () => {
       setSaving(true);
       await postService.deletePost(id);
       
-      setSuccess('Publication supprimée avec succès !');
+      setSuccess('Actualité supprimée avec succès !');
       setTimeout(() => {
         navigate('/admin/posts');
       }, 1500);
@@ -431,7 +336,7 @@ const EditContent = () => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#003366]/5 via-[#004488]/5 to-[#003366]/5">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-[#FFD700] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement de la publication...</p>
+          <p className="text-gray-600">Chargement de l\'actualité...</p>
         </div>
       </div>
     );
@@ -457,13 +362,13 @@ const EditContent = () => {
           
           <div className="relative">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-[#003366] via-[#004488] to-[#003366] bg-clip-text text-transparent mb-2">
-              Modifier la publication
+              Modifier l'actualité
             </h1>
             <p className="text-gray-600">
               Modifiez les champs souhaités (* = obligatoire)
             </p>
             <p className="text-sm text-blue-600 mt-2">
-              ID de la publication: {id}
+              ID de l'actualité: {id}
             </p>
           </div>
         </div>
@@ -491,7 +396,7 @@ const EditContent = () => {
 
         {/* Formulaire principal */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Informations de base */}
+          {/* Informations principales */}
           <div className="relative group">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-[#003366] to-[#004488] rounded-2xl opacity-0 group-hover:opacity-10 blur transition duration-1000 group-hover:duration-200"></div>
             
@@ -526,32 +431,13 @@ const EditContent = () => {
                     value={formData.content}
                     onChange={handleChange}
                     required
-                    rows={8}
+                    rows={10}
                     className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FFD700] focus:border-transparent text-gray-800 placeholder-gray-500 resize-none"
-                    placeholder="Décrivez en détail le contenu de votre publication..."
+                    placeholder="Décrivez en détail le contenu de votre actualité..."
                   />
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Type de contenu *
-                    </label>
-                    <select
-                      name="type"
-                      value={formData.type}
-                      onChange={(e) => {
-                        setFormData(prev => ({ ...prev, type: e.target.value }));
-                        setContentType(e.target.value);
-                      }}
-                      className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FFD700] focus:border-transparent text-gray-800 appearance-none"
-                    >
-                      <option value="événement">Événement</option>
-                      <option value="actualité">Actualité</option>
-                      <option value="communiqué">Communiqué</option>
-                    </select>
-                  </div>
-                  
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Catégorie
@@ -566,6 +452,26 @@ const EditContent = () => {
                       <option value="social">Social</option>
                       <option value="économique">Économique</option>
                       <option value="culturel">Culturel</option>
+                      <option value="éducation">Éducation</option>
+                      <option value="santé">Santé</option>
+                      <option value="environnement">Environnement</option>
+                      <option value="autre">Autre</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Statut
+                    </label>
+                    <select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleChange}
+                      className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FFD700] focus:border-transparent text-gray-800 appearance-none"
+                    >
+                      <option value="publié">Publié</option>
+                      <option value="brouillon">Brouillon</option>
+                      <option value="archivé">Archivé</option>
                     </select>
                   </div>
                   
@@ -601,285 +507,100 @@ const EditContent = () => {
             </div>
           </div>
 
-          {/* Détails de l'événement */}
-          {contentType === 'événement' && (
-            <div className="relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl opacity-0 group-hover:opacity-10 blur transition duration-1000 group-hover:duration-200"></div>
-              
-              <div className="relative bg-gradient-to-br from-blue-50/80 to-blue-100/60 backdrop-blur-sm rounded-2xl border border-blue-200/50 shadow-xl p-6">
-                <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-blue-600" />
-                  Détails de l'événement
-                </h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Date et heure *
-                    </label>
-                    <input
-                      type="datetime-local"
-                      name="eventDate"
-                      value={eventData.eventDate}
-                      onChange={handleChange}
-                      required
-                      className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Type d'événement
-                    </label>
-                    <select
-                      name="eventType"
-                      value={eventData.eventType}
-                      onChange={handleChange}
-                      className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 appearance-none"
-                    >
-                      <option value="meeting">Réunion</option>
-                      <option value="manifestation">Manifestation</option>
-                      <option value="conférence">Conférence</option>
-                      <option value="assemblée">Assemblée</option>
-                      <option value="action_sociale">Action sociale</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      Lieu *
-                    </label>
-                    <input
-                      type="text"
-                      name="eventLocation"
-                      value={eventData.eventLocation}
-                      onChange={handleChange}
-                      required
-                      className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 placeholder-gray-500"
-                      placeholder="Ex: Maison des jeunes"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Ville *
-                    </label>
-                    <input
-                      type="text"
-                      name="eventCity"
-                      value={eventData.eventCity}
-                      onChange={handleChange}
-                      required
-                      className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 placeholder-gray-500"
-                      placeholder="Ex: Cotonou"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Département
-                    </label>
-                    <input
-                      type="text"
-                      name="eventDepartment"
-                      value={eventData.eventDepartment}
-                      onChange={handleChange}
-                      className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 placeholder-gray-500"
-                      placeholder="Ex: Littoral"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Date de fin (optionnel)
-                    </label>
-                    <input
-                      type="datetime-local"
-                      name="eventEndDate"
-                      value={eventData.eventEndDate}
-                      onChange={handleChange}
-                      className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
-                    />
-                  </div>
-                  
-                  <div className="md:col-span-2">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        name="registrationRequired"
-                        checked={eventData.registrationRequired}
-                        onChange={handleChange}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
-                      />
-                      <span className="text-sm text-gray-700">Inscription requise</span>
-                    </label>
-                  </div>
-                  
-                  {eventData.registrationRequired && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Nombre maximum de participants
-                      </label>
-                      <input
-                        type="number"
-                        name="maxParticipants"
-                        value={eventData.maxParticipants}
-                        onChange={handleChange}
-                        min="1"
-                        className="w-full p-3 border border-gray-300/50 bg-white/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
-                        placeholder="Ex: 50"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Upload d'images */}
+          {/* Upload d'image */}
           <div className="relative group">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl opacity-0 group-hover:opacity-10 blur transition duration-1000 group-hover:duration-200"></div>
             
             <div className="relative bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl border border-white/20 shadow-xl p-6">
               <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <Image className="w-5 h-5 text-purple-600" />
-                Images ({imagePreviews.length})
+                <ImageIcon className="w-5 h-5 text-purple-600" />
+                Image d'illustration
               </h2>
               
               <input
                 type="file"
                 ref={imageInputRef}
-                multiple
                 accept="image/*"
                 onChange={handleImageSelect}
                 className="hidden"
               />
               
-              <button
-                type="button"
-                onClick={() => imageInputRef.current.click()}
-                className="w-full p-6 border-2 border-dashed border-gray-300/50 rounded-xl hover:border-gray-400 hover:bg-gray-50/50 transition-all duration-300 mb-4 group/upload"
-              >
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-3 text-white">
-                    <Upload className="w-6 h-6" />
-                  </div>
-                  <p className="font-medium text-gray-800">Ajouter de nouvelles images</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    JPG, PNG, GIF • Max 5MB • Converties en base64
-                  </p>
-                </div>
-              </button>
-              
-              {imagePreviews.length > 0 && (
-                <div>
-                  <h3 className="font-medium text-gray-700 mb-3">
-                    Images ({imagePreviews.length})
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {imagePreviews.map((preview, index) => (
-                      <div key={index} className="relative group/image">
-                        <img
-                          src={preview.url}
-                          alt={preview.name}
-                          className="w-full h-32 object-cover rounded-xl border border-gray-300/50 group-hover/image:shadow-lg transition-shadow"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute top-2 right-2 bg-gradient-to-br from-red-500 to-red-600 text-white p-1.5 rounded-full text-xs hover:scale-110 transition-transform"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 rounded-b-xl">
-                          <p className="text-xs text-white truncate">
-                            {preview.name}
-                          </p>
-                          <p className="text-xs text-gray-300">
-                            {preview.isExisting ? 'Image existante' : formatFileSize(preview.size)}
-                          </p>
-                          {preview.isExisting && imagesToDelete.includes(preview.id) && (
-                            <p className="text-xs text-red-300">(Suppression demandée)</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {imagesToDelete.length > 0 && (
-                    <p className="text-sm text-orange-600 mt-3">
-                      ⓘ {imagesToDelete.length} image(s) marquée(s) pour suppression
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Upload de fichiers */}
-          <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl opacity-0 group-hover:opacity-10 blur transition duration-1000 group-hover:duration-200"></div>
-            
-            <div className="relative bg-gradient-to-br from-white/80 to-white/60 backdrop-blur-sm rounded-2xl border border-white/20 shadow-xl p-6">
-              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <File className="w-5 h-5 text-green-600" />
-                Documents ({selectedFiles.length})
-              </h2>
-              
-              <input
-                type="file"
-                ref={fileInputRef}
-                multiple
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              
-              <button
-                type="button"
-                onClick={() => fileInputRef.current.click()}
-                className="w-full p-6 border-2 border-dashed border-gray-300/50 rounded-xl hover:border-gray-400 hover:bg-gray-50/50 transition-all duration-300 mb-4 group/upload"
-              >
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-3 text-white">
-                    <Upload className="w-6 h-6" />
-                  </div>
-                  <p className="font-medium text-gray-800">Ajouter de nouveaux documents</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    PDF, Word, Excel, PowerPoint, TXT
-                  </p>
-                </div>
-              </button>
-              
-              {selectedFiles.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="font-medium text-gray-700">
-                    Nouveaux fichiers ({selectedFiles.length})
-                  </h3>
-                  {selectedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50/50 to-gray-100/50 rounded-xl border border-gray-300/30 hover:border-gray-400/50 transition-all duration-300">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white">
-                          <File className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-800">{file.name}</p>
-                          <p className="text-sm text-gray-500">
-                            {formatFileSize(file.size)}
-                          </p>
-                        </div>
-                      </div>
+              <div className="space-y-4">
+                {imagePreview ? (
+                  <div className="space-y-4">
+                    <div className="relative group/image">
+                      <img
+                        src={imagePreview.url}
+                        alt={imagePreview.name}
+                        className="w-full h-64 object-cover rounded-xl border border-gray-300/50 group-hover/image:shadow-lg transition-shadow"
+                      />
                       <button
                         type="button"
-                        onClick={() => removeFile(index)}
-                        className="text-red-600 hover:text-red-800 text-sm font-medium hover:scale-110 transition-transform"
+                        onClick={removeImage}
+                        className="absolute top-4 right-4 bg-gradient-to-br from-red-500 to-red-600 text-white p-2 rounded-full hover:scale-110 transition-transform"
                       >
-                        Retirer
+                        <X className="w-4 h-4" />
                       </button>
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 rounded-b-xl">
+                        <p className="text-sm text-white font-medium truncate">
+                          {imagePreview.name}
+                        </p>
+                        <p className="text-xs text-gray-300">
+                          {imagePreview.isExisting ? 'Image existante' : formatFileSize(imagePreview.size)}
+                        </p>
+                        {imageToDelete && imagePreview.isExisting && (
+                          <p className="text-xs text-red-300">(Suppression demandée)</p>
+                        )}
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => imageInputRef.current.click()}
+                        className="flex-1 p-3 border-2 border-dashed border-purple-300/50 text-purple-600 rounded-xl hover:border-purple-400 hover:bg-purple-50/50 transition-all duration-300 font-medium"
+                      >
+                        Changer d'image
+                      </button>
+                      
+                      {imagePreview.isExisting && imageToDelete && (
+                        <button
+                          type="button"
+                          onClick={restoreExistingImage}
+                          className="flex-1 p-3 border-2 border-blue-300/50 text-blue-600 rounded-xl hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-300 font-medium"
+                        >
+                          Restaurer l'image
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current.click()}
+                    className="w-full p-8 border-2 border-dashed border-gray-300/50 rounded-xl hover:border-gray-400 hover:bg-gray-50/50 transition-all duration-300 group/upload"
+                  >
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 text-white">
+                        <Upload className="w-8 h-8" />
+                      </div>
+                      <p className="font-medium text-gray-800 text-lg">Ajouter une image</p>
+                      <p className="text-sm text-gray-500 mt-2">
+                        JPG, PNG, GIF • Max 5MB • Stockée en base64
+                      </p>
+                      <p className="text-xs text-purple-600 mt-3">
+                        ⓘ Vous ne pouvez sélectionner qu'une seule image
+                      </p>
+                    </div>
+                  </button>
+                )}
+                
+                {!imagePreview && existingImage && (
+                  <p className="text-sm text-orange-600">
+                    ⓘ L'image existante sera supprimée si vous n'en ajoutez pas de nouvelle
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
@@ -941,4 +662,4 @@ const EditContent = () => {
   );
 };
 
-export default EditContent;
+export default EditActualite;

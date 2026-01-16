@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Mail, Lock, AlertCircle, Phone, Globe } from 'lucide-react';
-import { authService } from '../../services/api'; // Import du service Axios
+import { authService } from '../../services/api';
 
 const LoginForm = () => {
   const [formData, setFormData] = useState({
     identifier: '', // Email
-    phoneCode: '+', 
+    code_telephone: '+', // Changé de phoneCode à code_telephone
     phoneNumber: '',
     password: ''
   });
@@ -25,7 +25,7 @@ const LoginForm = () => {
       ...prev, 
       identifier: '',
       phoneNumber: '',
-      phoneCode: '+'
+      code_telephone: '+'
     }));
     setError('');
   };
@@ -36,7 +36,7 @@ const LoginForm = () => {
     if (value === '') value = '+';
     const numbersOnly = value.slice(1).replace(/[^0-9]/g, '');
     if (numbersOnly.length <= 4) {
-      setFormData(prev => ({ ...prev, phoneCode: '+' + numbersOnly }));
+      setFormData(prev => ({ ...prev, code_telephone: '+' + numbersOnly }));
     }
   };
 
@@ -51,7 +51,6 @@ const LoginForm = () => {
     let loginData;
     
     if (loginType === 'email') {
-      // Validation email
       if (!formData.identifier.trim()) {
         setError('Veuillez entrer votre email');
         setLoading(false);
@@ -64,8 +63,7 @@ const LoginForm = () => {
         loginType: 'email'
       };
     } else {
-      // Validation téléphone
-      if (!validatePhoneCode(formData.phoneCode)) {
+      if (!validatePhoneCode(formData.code_telephone)) {
         setError('Code pays invalide. Format: +XX ou +XXX');
         setLoading(false);
         return;
@@ -77,34 +75,43 @@ const LoginForm = () => {
         return;
       }
 
+      // CORRECTION : Envoyer code_telephone (pas phoneCode)
       loginData = {
-        phoneCode: formData.phoneCode,
+        identifier: formData.phoneNumber,
+        code_telephone: formData.code_telephone, // Champ corrigé
         phoneNumber: formData.phoneNumber,
         password: formData.password,
         loginType: 'phone'
       };
     }
 
-    // Appel API avec Axios
     const response = await authService.login(loginData);
     
     if (response.success) {
-      // Sauvegarder le token et les données
       authService.saveAuthData(response.token, response.member);
       
-      // Message de bienvenue personnalisé selon le rôle
       const welcomeMessage = response.member.role === 'admin' 
         ? `👑 Bienvenue Administrateur ${response.member.prenom} !`
         : `✅ Bienvenue ${response.member.prenom} !`;
       
       alert(welcomeMessage);
       
-      // REDIRECTION SPÉCIFIQUE SELON LE RÔLE
+      // VÉRIFICATION PROFIL COMPLET
+      if (response.member.role !== 'admin') {
+        if (response.member.profileStatus && !response.member.profileStatus.completed) {
+          window.location.href = '/profile/complete';
+          return;
+        }
+        if (!response.member.profileCompleted) {
+          window.location.href = '/profile/complete';
+          return;
+        }
+      }
+      
+      // Redirection
       if (response.member.role === 'admin') {
-        // Admin → Tableau de bord admin
         window.location.href = '/admin/dashboard';
       } else {
-        // Membre normal → Carte de membre
         window.location.href = '/users/dashboard';
       }
     } else {
@@ -112,7 +119,6 @@ const LoginForm = () => {
     }
   } catch (error) {
     console.error('Erreur de connexion:', error);
-    // Gérer l'erreur correctement
     setError(error.message || 'Erreur de connexion au serveur');
   } finally {
     setLoading(false);
@@ -135,7 +141,6 @@ const LoginForm = () => {
           </h2>
         </div>
         
-        {/* Sélecteur type de connexion */}
         <div className="flex gap-3 mb-6">
           <button type="button" onClick={() => handleLoginTypeChange('email')}
             className={`flex-1 py-3 px-4 rounded-lg border transition-all duration-300 ${loginType === 'email' 
@@ -167,7 +172,6 @@ const LoginForm = () => {
           )}
 
           <div className="space-y-4">
-            {/* Champ selon type */}
             {loginType === 'email' ? (
               <div className="group">
                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
@@ -189,7 +193,7 @@ const LoginForm = () => {
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Globe className="h-5 w-5 text-gray-400" />
                       </div>
-                      <input type="text" name="phoneCode" value={formData.phoneCode} onChange={handlePhoneCodeChange}
+                      <input type="text" name="code_telephone" value={formData.code_telephone} onChange={handlePhoneCodeChange}
                         className="w-full py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent text-center font-mono"
                         placeholder="+229" required maxLength={5} />
                     </div>
@@ -201,16 +205,16 @@ const LoginForm = () => {
                     </div>
                   </div>
                   
-                  {formData.phoneCode && formData.phoneNumber && validatePhoneCode(formData.phoneCode) && (
+                  {formData.code_telephone && formData.phoneNumber && validatePhoneCode(formData.code_telephone) && (
                     <div className="mt-2 text-sm text-gray-600">
                       <span className="font-medium">Numéro complet : </span>
                       <span className="font-semibold text-[#003366] font-mono">
-                        {formData.phoneCode} {formData.phoneNumber}
+                        {formData.code_telephone} {formData.phoneNumber}
                       </span>
                     </div>
                   )}
                   
-                  {formData.phoneCode && !validatePhoneCode(formData.phoneCode) && (
+                  {formData.code_telephone && !validatePhoneCode(formData.code_telephone) && (
                     <div className="mt-2 p-2 bg-gradient-to-r from-yellow-50 to-amber-50 rounded border border-yellow-200">
                       <p className="text-sm text-yellow-700">
                         ⚠️ Format code pays invalide. Exemples : <code className="font-mono bg-yellow-100 px-1 rounded">+229</code>, <code className="font-mono bg-yellow-100 px-1 rounded">+33</code>, <code className="font-mono bg-yellow-100 px-1 rounded">+1</code>
@@ -221,7 +225,6 @@ const LoginForm = () => {
               </div>
             )}
 
-            {/* Mot de passe */}
             <div className="group">
               <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                 <Lock className="w-4 h-4" /><span>Mot de passe</span>
@@ -232,7 +235,6 @@ const LoginForm = () => {
             </div>
           </div>
 
-          {/* Options */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <input type="checkbox" id="remember"
@@ -244,7 +246,6 @@ const LoginForm = () => {
             </a>
           </div>
 
-          {/* Bouton */}
           <button type="submit" disabled={loading}
             className="w-full group relative bg-gradient-to-r from-[#003366] via-[#004488] to-[#003366] text-white py-4 rounded-xl font-bold text-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
@@ -263,7 +264,6 @@ const LoginForm = () => {
             </span>
           </button>
 
-          {/* Lien d'inscription */}
           <div className="text-center pt-4 border-t border-gray-200">
             <p className="text-gray-600">
               Pas encore membre ?{' '}

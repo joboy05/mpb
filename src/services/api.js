@@ -100,6 +100,23 @@ export const authService = {
 
 // ============ SERVICE MEMBERS ============
 export const memberService = {
+  completeProfile: async (profileData) => {
+  try {
+    const response = await apiClient.post('/members/profile/complete', profileData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Erreur de complétion du profil' };
+  }
+},
+
+getProfileStatus: async () => {
+  try {
+    const response = await apiClient.get('/members/profile/status');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Erreur de récupération du statut' };
+  }
+},
   getProfile: async () => {
     try {
       const response = await apiClient.get('/members/profile');
@@ -147,6 +164,44 @@ export const adminService = {
       throw error.response?.data || { message: 'Erreur de récupération des membres' };
     }
   },
+  exportMembers: async (password, format = 'csv') => {
+    try {
+      const response = await apiClient.post('/admin/export-members', 
+        { password, format },
+        { responseType: 'blob' } // Important pour télécharger le fichier
+      );
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erreur export membres:', error);
+      throw error.response?.data || { message: 'Erreur lors de l\'export' };
+    }
+  },
+
+  exportMembersExcel: async (password) => {
+    try {
+      const response = await apiClient.post('/admin/export-members/excel', 
+        { password },
+        { responseType: 'blob' }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erreur export Excel:', error);
+      throw error.response?.data || { message: 'Erreur lors de l\'export Excel' };
+    }
+  },
+
+  exportMembersPDF: async (password) => {
+    try {
+      const response = await apiClient.post('/admin/export-members/pdf', 
+        { password },
+        { responseType: 'blob' }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erreur export PDF:', error);
+      throw error.response?.data || { message: 'Erreur lors de l\'export PDF' };
+    }
+  }
 };
 
 // ============ SERVICE POSTS ============
@@ -279,41 +334,30 @@ export const postService = {
 
   // Fonction pour obtenir l'URL d'une image
   // Dans api.js, modifiez la fonction getImageUrl :
-getImageUrl: (image) => {
-  if (!image) return null;
-  
-  console.log('🔍 getImageUrl - Image data:', {
-    hasThumbnail: !!image.thumbnailBase64,
-    hasBase64: !!image.base64,
-    thumbnailLength: image.thumbnailBase64 ? image.thumbnailBase64.length : 0,
-    base64Length: image.base64 ? image.base64.length : 0
-  });
-  
-  // Priorité 1: thumbnailBase64 (pour les listes)
-  if (image.thumbnailBase64) {
-    console.log('🖼️ Utilisation thumbnailBase64');
-    return image.thumbnailBase64;
-  }
-  
-  // Priorité 2: base64 complet
-  if (image.base64) {
-    console.log('🖼️ Utilisation base64 complet');
-    return image.base64;
-  }
-  
-  // Ancien système (fichiers sur disque)
-  if (image.url) {
-    console.log('🖼️ Utilisation URL');
-    if (image.url.startsWith('http')) {
-      return image.url;
+getImageUrl: (imageData) => {
+    if (!imageData) return null;
+    
+    // Si thumbnailBase64 existe
+    if (imageData.thumbnailBase64) {
+      let base64Data = imageData.thumbnailBase64;
+      // Vérifier si le préfixe data: est présent
+      if (!base64Data.startsWith('data:')) {
+        base64Data = `data:${imageData.mimetype || 'image/jpeg'};base64,${base64Data}`;
+      }
+      return base64Data;
     }
-    // Pour le développement local
-    return `http://localhost:5000${image.url}`;
-  }
-  
-  console.log('❌ Aucune source d\'image trouvée');
-  return null;
-},
+    
+    // Sinon utiliser base64 principal
+    if (imageData.base64) {
+      let base64Data = imageData.base64;
+      if (!base64Data.startsWith('data:')) {
+        base64Data = `data:${imageData.mimetype || 'image/jpeg'};base64,${base64Data}`;
+      }
+      return base64Data;
+    }
+    
+    return null;
+  },
 
   // Fonction pour obtenir une image complète (lazy loading)
   getFullImageUrl: async (postId, imageId) => {
