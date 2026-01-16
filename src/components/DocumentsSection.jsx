@@ -3,6 +3,7 @@ import React from 'react';
 import { FileText, Download, BookOpen, Shield, ChevronRight, Eye, Users, TrendingUp } from 'lucide-react';
 import ScrollAnimationWrapper from './ScrollAnimationWrapper';
 import {  Archive, FolderOpen, FolderArchive } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const DocumentsSection = () => {
   const documents = [
@@ -337,8 +338,8 @@ const DocumentsSection = () => {
                   </p>
                   
                   <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-                    <a 
-                      href="https://docs.google.com/forms/"
+                    <Link
+                      to="/register"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="bg-[#facc15] text-[#003366] px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-100 hover:shadow-2xl transition-all duration-300 inline-flex items-center gap-3 group"
@@ -346,7 +347,7 @@ const DocumentsSection = () => {
                       <Users className="w-6 h-6 group-hover:rotate-12 transition-transform" />
                       <span>Adhérer Maintenant</span>
                       <ChevronRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
-                    </a>
+                    </Link>
                     
                     <a 
                       href="#"

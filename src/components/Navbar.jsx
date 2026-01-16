@@ -320,7 +320,7 @@ const Navbar = () => {
                 </div>
                 
                 <div className="relative flex items-center space-x-2">
-                  <span className="font-bold text-sm sm:text-base tracking-wide">Rejoindre</span>
+                  <span className="font-bold text-sm sm:text-base tracking-wide">Se connecter</span>
                 </div>
                 
                 <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center text-white text-xs font-bold animate-pulse shadow-md border border-white">

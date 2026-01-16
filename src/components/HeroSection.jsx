@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Shield, Flag, Users, Globe, Target, Heart, ChevronDown } from 'lucide-react';
 import ScrollToTop from './ScrollToTop';
-
+import { Link } from 'react-router-dom';
 // Import des images de fond
 import hero1 from '../assets/images/hero1.jpeg';
 import hero2 from '../assets/images/hero2.jpeg';
@@ -181,8 +181,8 @@ const HeroSection = () => {
         <div className={`flex flex-col sm:flex-row gap-4 justify-center items-center mb-16 transition-all duration-1000 delay-300 ${
           isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
         }`}>
-          <a 
-            href="https://docs.google.com/forms/"
+          <Link
+            to="/register"
             target="_blank"
             rel="noopener noreferrer"
             className="group relative bg-gradient-to-r from-yellow-400 to-yellow-300 text-blue-900 px-8 py-4 rounded-xl font-bold text-lg shadow-2xl hover:shadow-3xl hover:-translate-y-1 transition-all duration-300 flex items-center gap-3 animate-pulse-slow min-w-[250px] justify-center"
@@ -195,7 +195,7 @@ const HeroSection = () => {
             <Users className="w-5 h-5 relative group-hover:rotate-12 transition-transform" />
             <span className="relative">Adhérer au Mouvement</span>
             <ChevronDown className="w-5 h-5 relative transform -rotate-90 group-hover:translate-x-1 transition-transform" />
-          </a>
+          </Link>
 
           <a 
             href="#vision"
