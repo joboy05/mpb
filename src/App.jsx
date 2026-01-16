@@ -10,6 +10,7 @@ import NewsList from './pages/NewsList';
 import NewsDetail from './pages/NewsDetail';
 import RegisterPage from './pages/RegisterPage';
 import CompleteProfile from './pages/users/CompleteProfile';
+import Profil from './pages/users/Profile';
 import PrivateRoute from './components/Auth/PrivateRoute';
 import AdminRoute from './components/Auth/AdminRoutes';
 import AdminDashboard from './pages/admin/Dashboard';
@@ -37,16 +38,21 @@ function App() {
         <Route path="/actualites" element={<NewsList />} />
         {/* <Route path="/actualites/:slug" element={<NewsDetail />} /> */}
         <Route path="/actualites/:id" element={<ArticleDetail />} />
-<Route path="/users/dashboard" element={
-  <PrivateRoute>
-    <UserDashboard />
-  </PrivateRoute>
-} />
-<Route path="/carte-membre" element={
-  <PrivateRoute>
-    <MemberCard />
-  </PrivateRoute>
-} />
+        <Route path="/users/dashboard" element={
+          <PrivateRoute>
+            <UserDashboard />
+          </PrivateRoute>
+        } />
+        <Route path="/mon-profil" element={
+          <PrivateRoute>
+            <Profil />
+          </PrivateRoute>
+        } />
+        <Route path="/carte-membre" element={
+          <PrivateRoute>
+            <MemberCard />
+          </PrivateRoute>
+        } />
         <Route path="/admin/dashboard" element={
           <AdminRoute>
             <AdminDashboard />

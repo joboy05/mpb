@@ -3,9 +3,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Download, Share2, Home, User, Calendar, MapPin, Shield, QrCode, Printer, Mail, Phone, Award } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import Navbar from '../components/Navbar';
 import html2canvas from 'html2canvas';
-
+import Navbar from '../components/users/Navbar';
 const MemberCard = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -107,7 +106,7 @@ const qrContent = `${baseUrl}/verify-member?data=${btoa(JSON.stringify({
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <Navbar />
       
-      <div className="max-w-6xl mx-auto mt-20 px-4 py-12">
+      <div className="max-w-6xl mx-auto px-4 py-12">
         {/* En-tête de confirmation */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-3 mb-6">

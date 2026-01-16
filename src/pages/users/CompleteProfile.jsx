@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserCheck, MapPin, Target, Grid, Star, ArrowRight, Loader } from 'lucide-react';
 import { memberService, authService } from '../../services/api';
-import Navbar from '../../components/Navbar'
+import Navbar from '../../components/users/Navbar'
 
 const CompleteProfile = () => {
   const navigate = useNavigate();
@@ -126,7 +126,7 @@ const CompleteProfile = () => {
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <Navbar />
       
-      <div className="max-w-4xl mx-auto mt-20 px-4 py-12">
+      <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-3 mb-6">
             <div className="w-16 h-1 bg-gradient-to-r from-transparent to-yellow-400"></div>
