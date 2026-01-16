@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserCheck, MapPin, Target, Grid, Star, ArrowRight, Loader } from 'lucide-react';
+import { UserCheck, MapPin, Target, Grid, Star, ArrowRight, Loader, Clock } from 'lucide-react';
 import { memberService, authService } from '../../services/api';
 import Navbar from '../../components/users/Navbar'
 
@@ -111,6 +111,12 @@ const CompleteProfile = () => {
     }
   };
 
+  const handleCompleteLater = () => {
+    if (window.confirm("Vous pourrez compléter votre profil plus tard depuis votre tableau de bord. Continuer ?")) {
+      navigate('/users/dashboard');
+    }
+  };
+
   if (!profileStatus) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -127,6 +133,35 @@ const CompleteProfile = () => {
       <Navbar />
       
       <div className="max-w-4xl mx-auto px-4 py-12">
+        {/* Bouton "Compléter plus tard" en haut à droite */}
+        <div className="flex justify-end mb-8">
+          <button
+            onClick={handleCompleteLater}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gradient-to-r hover:from-gray-200 hover:to-gray-300 hover:shadow-lg transition-all duration-300 border border-gray-300"
+          >
+            <Clock className="w-4 h-4" />
+            Compléter plus tard
+          </button>
+        </div>
+
+        {/* Bandeau d'information */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 mb-8">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+              <UserCheck className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-blue-900 text-lg mb-1">
+                ⚠️ Votre profil est incomplet
+              </h3>
+              <p className="text-blue-700 text-sm">
+                Complétez-le maintenant pour profiter de toutes les fonctionnalités, 
+                ou choisissez de le faire plus tard. Vous pouvez toujours y accéder depuis votre tableau de bord.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-3 mb-6">
             <div className="w-16 h-1 bg-gradient-to-r from-transparent to-yellow-400"></div>
@@ -183,6 +218,52 @@ const CompleteProfile = () => {
           </div>
         ) : (
           <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+            {/* Section choix avant formulaire */}
+            <div className="mb-10 p-6 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
+              <h3 className="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2">
+                <Clock className="w-5 h-5 text-yellow-600" />
+                Que souhaitez-vous faire ?
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white p-4 rounded-lg border border-green-200 hover:border-green-300 transition-colors">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <ArrowRight className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-green-800 mb-1">
+                        Compléter maintenant
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        Terminez votre inscription pour accéder à toutes les fonctionnalités du MPB
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white p-4 rounded-lg border border-blue-200 hover:border-blue-300 transition-colors">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Clock className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-blue-800 mb-1">
+                        Compléter plus tard
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        Continuer vers le tableau de bord et revenir plus tard
+                      </p>
+                      <button
+                        onClick={handleCompleteLater}
+                        className="mt-2 text-blue-600 hover:text-blue-800 text-sm font-medium"
+                      >
+                        Aller au dashboard →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-8">
               {/* Ville */}
               <div className="group">
@@ -190,11 +271,16 @@ const CompleteProfile = () => {
                   <MapPin className="w-5 h-5" />
                   <span>Ville actuelle *</span>
                 </label>
-                <input type="text" name="ville" value={formData.ville} onChange={handleChange}
+                <input 
+                  type="text" 
+                  name="ville" 
+                  value={formData.ville} 
+                  onChange={handleChange}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
                     errors.ville ? 'border-red-300' : 'border-gray-300'
                   }`} 
-                  placeholder="Ex: Cotonou, Porto-Novo, Parakou..." />
+                  placeholder="Ex: Cotonou, Porto-Novo, Parakou..." 
+                />
                 {errors.ville && <p className="mt-1 text-sm text-red-600">{errors.ville}</p>}
                 <p className="text-sm text-gray-500 mt-2">
                   Ville où vous résidez actuellement
@@ -207,11 +293,16 @@ const CompleteProfile = () => {
                   <Target className="w-5 h-5" />
                   <span>Ville de mobilisation *</span>
                 </label>
-                <input type="text" name="ville_mobilisation" value={formData.ville_mobilisation} onChange={handleChange}
+                <input 
+                  type="text" 
+                  name="ville_mobilisation" 
+                  value={formData.ville_mobilisation} 
+                  onChange={handleChange}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
                     errors.ville_mobilisation ? 'border-red-300' : 'border-gray-300'
                   }`} 
-                  placeholder="Ex: Cotonou, Abomey-Calavi..." />
+                  placeholder="Ex: Cotonou, Abomey-Calavi..." 
+                />
                 {errors.ville_mobilisation && <p className="mt-1 text-sm text-red-600">{errors.ville_mobilisation}</p>}
                 <p className="text-sm text-gray-500 mt-2">
                   Ville où vous souhaitez être actif au sein du MPB
@@ -224,10 +315,14 @@ const CompleteProfile = () => {
                   <Grid className="w-5 h-5" />
                   <span>Section *</span>
                 </label>
-                <select name="section" value={formData.section} onChange={handleChange}
+                <select 
+                  name="section" 
+                  value={formData.section} 
+                  onChange={handleChange}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
                     errors.section ? 'border-red-300' : 'border-gray-300'
-                  }`}>
+                  }`}
+                >
                   <option value="">Sélectionnez votre section</option>
                   <option value="Jeunesse">Jeunesse MPB</option>
                   <option value="Femmes">Femmes MPB</option>
@@ -250,12 +345,16 @@ const CompleteProfile = () => {
                   <Star className="w-5 h-5" />
                   <span>Centres d'intérêt & Compétences *</span>
                 </label>
-                <textarea name="centres_interet_competences" value={formData.centres_interet_competences} 
-                  onChange={handleChange} rows="5"
+                <textarea 
+                  name="centres_interet_competences" 
+                  value={formData.centres_interet_competences} 
+                  onChange={handleChange} 
+                  rows="5"
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent resize-none transition-colors ${
                     errors.centres_interet_competences ? 'border-red-300' : 'border-gray-300'
                   }`} 
-                  placeholder="Ex: Communication, Organisation d'événements, Informatique, Sensibilisation, Réseautage..." />
+                  placeholder="Ex: Communication, Organisation d'événements, Informatique, Sensibilisation, Réseautage..." 
+                />
                 {errors.centres_interet_competences && (
                   <p className="mt-1 text-sm text-red-600">{errors.centres_interet_competences}</p>
                 )}
@@ -289,30 +388,36 @@ const CompleteProfile = () => {
                 </div>
               </div>
 
-              {/* Bouton de soumission */}
-              <button type="submit" disabled={loading}
-                className="w-full group relative bg-gradient-to-r from-[#003366] via-[#004488] to-[#003366] text-white py-4 rounded-xl font-bold text-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0">
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                <span className="relative flex items-center justify-center gap-3">
-                  {loading ? (
-                    <>
-                      <Loader className="w-5 h-5 animate-spin" />
-                      Enregistrement...
-                    </>
-                  ) : (
-                    <>
-                      Finaliser mon profil
-                      <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
-                    </>
-                  )}
-                </span>
-              </button>
-
-              {/* Lien pour plus tard */}
-              <div className="text-center pt-4 border-t border-gray-200">
-                <button type="button" onClick={() => navigate('/users/dashboard')}
-                  className="text-gray-600 hover:text-[#003366] font-medium">
-                  Compléter plus tard →
+              {/* Boutons d'action en bas */}
+              <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={handleCompleteLater}
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gradient-to-r hover:from-gray-200 hover:to-gray-300 hover:shadow-lg transition-all duration-300 border border-gray-300"
+                >
+                  <Clock className="w-5 h-5" />
+                  Compléter plus tard
+                </button>
+                
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className="flex-1 group relative bg-gradient-to-r from-[#003366] via-[#004488] to-[#003366] text-white py-4 rounded-xl font-bold text-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                  <span className="relative flex items-center justify-center gap-3">
+                    {loading ? (
+                      <>
+                        <Loader className="w-5 h-5 animate-spin" />
+                        Enregistrement...
+                      </>
+                    ) : (
+                      <>
+                        Finaliser mon profil
+                        <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+                      </>
+                    )}
+                  </span>
                 </button>
               </div>
             </form>
