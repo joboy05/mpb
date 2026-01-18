@@ -9,6 +9,7 @@ import NotFound404 from './pages/NotFound404';
 import NewsList from './pages/NewsList';
 import NewsDetail from './pages/NewsDetail';
 import RegisterPage from './pages/RegisterPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import CompleteProfile from './pages/users/CompleteProfile';
 import Profil from './pages/users/Profile';
 import PrivateRoute from './components/Auth/PrivateRoute';
@@ -31,6 +32,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
         <Route path="/login" element={<JoinMovement />} />
         <Route path="/rejoindre" element={<JoinMovement />} />
         <Route path="/profile/complete" element={<CompleteProfile />} />
@@ -63,7 +65,7 @@ function App() {
             <AdminProfile />
           </AdminRoute>
         } />
-        
+
         {/* Autres routes admin (à créer plus tard) */}
         <Route path="/admin/membres" element={
           <AdminRoute>
@@ -85,11 +87,11 @@ function App() {
             <EditContent />
           </AdminRoute>
         } />
-<Route path="/profil" element={
-  <PrivateRoute>
-    {/* <Profil /> */}
-  </PrivateRoute>
-} />
+        <Route path="/profil" element={
+          <PrivateRoute>
+            {/* <Profil /> */}
+          </PrivateRoute>
+        } />
         <Route path="*" element={<NotFound404 />} />
         {/* Vous pouvez ajouter d'autres routes ici plus tard */}
         {/* <Route path="/about" element={<About />} />

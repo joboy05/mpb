@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Mail, Lock, AlertCircle, Phone, Globe } from 'lucide-react';
+import { ArrowRight, Mail, Lock, AlertCircle, Phone, Globe, Eye, EyeOff } from 'lucide-react';
 import { authService } from '../../services/api';
 
 const LoginForm = () => {
@@ -11,6 +11,7 @@ const LoginForm = () => {
     password: ''
   });
   const [loginType, setLoginType] = useState('email');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -21,8 +22,8 @@ const LoginForm = () => {
 
   const handleLoginTypeChange = (type) => {
     setLoginType(type);
-    setFormData(prev => ({ 
-      ...prev, 
+    setFormData(prev => ({
+      ...prev,
       identifier: '',
       phoneNumber: '',
       code_telephone: '+'
@@ -43,92 +44,92 @@ const LoginForm = () => {
   const validatePhoneCode = (code) => /^\+\d{1,4}$/.test(code);
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError('');
-  setLoading(true);
+    e.preventDefault();
+    setError('');
+    setLoading(true);
 
-  try {
-    let loginData;
-    
-    if (loginType === 'email') {
-      if (!formData.identifier.trim()) {
-        setError('Veuillez entrer votre email');
-        setLoading(false);
-        return;
-      }
-      
-      loginData = {
-        identifier: formData.identifier.trim().toLowerCase(),
-        password: formData.password,
-        loginType: 'email'
-      };
-    } else {
-      if (!validatePhoneCode(formData.code_telephone)) {
-        setError('Code pays invalide. Format: +XX ou +XXX');
-        setLoading(false);
-        return;
-      }
+    try {
+      let loginData;
 
-      if (!formData.phoneNumber.trim()) {
-        setError('Veuillez entrer votre numéro de téléphone');
-        setLoading(false);
-        return;
-      }
-
-      // CORRECTION : Envoyer code_telephone (pas phoneCode)
-      loginData = {
-        identifier: formData.phoneNumber,
-        code_telephone: formData.code_telephone, // Champ corrigé
-        phoneNumber: formData.phoneNumber,
-        password: formData.password,
-        loginType: 'phone'
-      };
-    }
-
-    const response = await authService.login(loginData);
-    
-    if (response.success) {
-      authService.saveAuthData(response.token, response.member);
-      
-      const welcomeMessage = response.member.role === 'admin' 
-        ? `👑 Bienvenue Administrateur ${response.member.prenom} !`
-        : `✅ Bienvenue ${response.member.prenom} !`;
-      
-      alert(welcomeMessage);
-      
-      // VÉRIFICATION PROFIL COMPLET
-      if (response.member.role !== 'admin') {
-        if (response.member.profileStatus && !response.member.profileStatus.completed) {
-          window.location.href = '/profile/complete';
+      if (loginType === 'email') {
+        if (!formData.identifier.trim()) {
+          setError('Veuillez entrer votre email');
+          setLoading(false);
           return;
         }
-        if (!response.member.profileCompleted) {
-          window.location.href = '/profile/complete';
-          return;
-        }
-      }
-      
-      // Redirection
-      if (response.member.role === 'admin') {
-        window.location.href = '/admin/dashboard';
+
+        loginData = {
+          identifier: formData.identifier.trim().toLowerCase(),
+          password: formData.password,
+          loginType: 'email'
+        };
       } else {
-        window.location.href = '/users/dashboard';
+        if (!validatePhoneCode(formData.code_telephone)) {
+          setError('Code pays invalide. Format: +XX ou +XXX');
+          setLoading(false);
+          return;
+        }
+
+        if (!formData.phoneNumber.trim()) {
+          setError('Veuillez entrer votre numéro de téléphone');
+          setLoading(false);
+          return;
+        }
+
+        // CORRECTION : Envoyer code_telephone (pas phoneCode)
+        loginData = {
+          identifier: formData.phoneNumber,
+          code_telephone: formData.code_telephone, // Champ corrigé
+          phoneNumber: formData.phoneNumber,
+          password: formData.password,
+          loginType: 'phone'
+        };
       }
-    } else {
-      setError(response.message || 'Identifiants incorrects');
+
+      const response = await authService.login(loginData);
+
+      if (response.success) {
+        authService.saveAuthData(response.token, response.member);
+
+        const welcomeMessage = response.member.role === 'admin'
+          ? `👑 Bienvenue Administrateur ${response.member.prenom} !`
+          : `✅ Bienvenue ${response.member.prenom} !`;
+
+        alert(welcomeMessage);
+
+        // VÉRIFICATION PROFIL COMPLET
+        if (response.member.role !== 'admin') {
+          if (response.member.profileStatus && !response.member.profileStatus.completed) {
+            window.location.href = '/profile/complete';
+            return;
+          }
+          if (!response.member.profileCompleted) {
+            window.location.href = '/profile/complete';
+            return;
+          }
+        }
+
+        // Redirection
+        if (response.member.role === 'admin') {
+          window.location.href = '/admin/dashboard';
+        } else {
+          window.location.href = '/users/dashboard';
+        }
+      } else {
+        setError(response.message || 'Identifiants incorrects');
+      }
+    } catch (error) {
+      console.error('Erreur de connexion:', error);
+      setError(error.message || 'Erreur de connexion au serveur');
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Erreur de connexion:', error);
-    setError(error.message || 'Erreur de connexion au serveur');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div className="bg-gradient-to-b from-white to-gray-50 rounded-2xl shadow-xl p-8 border border-gray-100 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-yellow-400/10 to-[#003366]/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-      
+
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-2xl font-bold text-[#003366] flex items-center gap-3">
@@ -140,26 +141,26 @@ const LoginForm = () => {
             </span>
           </h2>
         </div>
-        
+
         <div className="flex gap-3 mb-6">
           <button type="button" onClick={() => handleLoginTypeChange('email')}
-            className={`flex-1 py-3 px-4 rounded-lg border transition-all duration-300 ${loginType === 'email' 
-              ? 'bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 text-blue-700 shadow-sm' 
+            className={`flex-1 py-3 px-4 rounded-lg border transition-all duration-300 ${loginType === 'email'
+              ? 'bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 text-blue-700 shadow-sm'
               : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'}`}>
             <div className="flex items-center justify-center gap-2">
               <Mail className="w-4 h-4" /><span>Email</span>
             </div>
           </button>
           <button type="button" onClick={() => handleLoginTypeChange('phone')}
-            className={`flex-1 py-3 px-4 rounded-lg border transition-all duration-300 ${loginType === 'phone' 
-              ? 'bg-gradient-to-r from-green-50 to-green-100 border-green-200 text-green-700 shadow-sm' 
+            className={`flex-1 py-3 px-4 rounded-lg border transition-all duration-300 ${loginType === 'phone'
+              ? 'bg-gradient-to-r from-green-50 to-green-100 border-green-200 text-green-700 shadow-sm'
               : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'}`}>
             <div className="flex items-center justify-center gap-2">
               <Phone className="w-4 h-4" /><span>Téléphone</span>
             </div>
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
@@ -187,7 +188,7 @@ const LoginForm = () => {
                   <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                     <Phone className="w-4 h-4" /><span>Téléphone</span>
                   </label>
-                  
+
                   <div className="flex gap-2 items-start">
                     <div className="relative w-28 flex-shrink-0">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -197,14 +198,14 @@ const LoginForm = () => {
                         className="w-full py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent text-center font-mono"
                         placeholder="+229" required maxLength={5} />
                     </div>
-                    
+
                     <div className="flex-1">
                       <input type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent"
                         placeholder="Ex: 01 61 23 45 67" required />
                     </div>
                   </div>
-                  
+
                   {formData.code_telephone && formData.phoneNumber && validatePhoneCode(formData.code_telephone) && (
                     <div className="mt-2 text-sm text-gray-600">
                       <span className="font-medium">Numéro complet : </span>
@@ -213,7 +214,7 @@ const LoginForm = () => {
                       </span>
                     </div>
                   )}
-                  
+
                   {formData.code_telephone && !validatePhoneCode(formData.code_telephone) && (
                     <div className="mt-2 p-2 bg-gradient-to-r from-yellow-50 to-amber-50 rounded border border-yellow-200">
                       <p className="text-sm text-yellow-700">
@@ -229,9 +230,18 @@ const LoginForm = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                 <Lock className="w-4 h-4" /><span>Mot de passe</span>
               </label>
-              <input type="password" name="password" value={formData.password} onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent group-hover:border-[#003366]/50 transition-colors"
-                required placeholder="Votre mot de passe" />
+              <div className="relative">
+                <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent group-hover:border-[#003366]/50 transition-colors"
+                  required placeholder="Votre mot de passe" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#003366]"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
           </div>
 

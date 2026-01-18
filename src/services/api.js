@@ -3,9 +3,9 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-console.log('🔧 Configuration API:', { 
+console.log('🔧 Configuration API:', {
   VITE_API_URL: import.meta.env.VITE_API_URL,
-  API_BASE_URL 
+  API_BASE_URL
 });
 
 // Instance Axios unique
@@ -58,6 +58,15 @@ export const authService = {
     }
   },
 
+  verifyEmail: async (token) => {
+    try {
+      const response = await apiClient.get(`/auth/verify-email/${token}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Erreur de vérification' };
+    }
+  },
+
   register: async (memberData) => {
     try {
       const response = await apiClient.post('/auth/register', memberData);
@@ -101,22 +110,22 @@ export const authService = {
 // ============ SERVICE MEMBERS ============
 export const memberService = {
   completeProfile: async (profileData) => {
-  try {
-    const response = await apiClient.post('/members/profile/complete', profileData);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || { message: 'Erreur de complétion du profil' };
-  }
-},
+    try {
+      const response = await apiClient.post('/members/profile/complete', profileData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Erreur de complétion du profil' };
+    }
+  },
 
-getProfileStatus: async () => {
-  try {
-    const response = await apiClient.get('/members/profile/status');
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || { message: 'Erreur de récupération du statut' };
-  }
-},
+  getProfileStatus: async () => {
+    try {
+      const response = await apiClient.get('/members/profile/status');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Erreur de récupération du statut' };
+    }
+  },
   getProfile: async () => {
     try {
       const response = await apiClient.get('/members/profile');
@@ -166,7 +175,7 @@ export const adminService = {
   },
   exportMembers: async (password, format = 'csv') => {
     try {
-      const response = await apiClient.post('/admin/export-members', 
+      const response = await apiClient.post('/admin/export-members',
         { password, format },
         { responseType: 'blob' } // Important pour télécharger le fichier
       );
@@ -179,7 +188,7 @@ export const adminService = {
 
   exportMembersExcel: async (password) => {
     try {
-      const response = await apiClient.post('/admin/export-members/excel', 
+      const response = await apiClient.post('/admin/export-members/excel',
         { password },
         { responseType: 'blob' }
       );
@@ -192,7 +201,7 @@ export const adminService = {
 
   exportMembersPDF: async (password) => {
     try {
-      const response = await apiClient.post('/admin/export-members/pdf', 
+      const response = await apiClient.post('/admin/export-members/pdf',
         { password },
         { responseType: 'blob' }
       );
@@ -214,8 +223,8 @@ export const postService = {
       return response.data;
     } catch (error) {
       console.error('❌ Erreur getAllPosts:', error.response?.data || error.message);
-      return { 
-        success: false, 
+      return {
+        success: false,
         posts: [],
         message: error.response?.data?.message || 'Erreur de connexion'
       };
@@ -251,24 +260,24 @@ export const postService = {
       let config = {
         headers: {}
       };
-      
+
       const token = localStorage.getItem('mpb_token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-      
+
       // Si c'est FormData, laisser axios gérer le Content-Type
       if (postData instanceof FormData) {
         // Rien à faire, axios le gère automatiquement
       } else {
         config.headers['Content-Type'] = 'application/json';
       }
-      
+
       const response = await apiClient.post('/posts', postData, config);
       return response.data;
     } catch (error) {
       console.error('❌ Erreur createPost:', error.response?.data || error);
-      throw error.response?.data || { 
+      throw error.response?.data || {
         message: 'Erreur de création de publication'
       };
     }
@@ -291,7 +300,7 @@ export const postService = {
       return response.data;
     } catch (error) {
       console.error('❌ Erreur addImagesToPost:', error);
-      throw error.response?.data || { 
+      throw error.response?.data || {
         message: 'Erreur lors de l\'ajout des images'
       };
     }
@@ -304,7 +313,7 @@ export const postService = {
       return response.data;
     } catch (error) {
       console.error('❌ Erreur deleteImage:', error);
-      throw error.response?.data || { 
+      throw error.response?.data || {
         message: 'Erreur lors de la suppression'
       };
     }
@@ -334,9 +343,9 @@ export const postService = {
 
   // Fonction pour obtenir l'URL d'une image
   // Dans api.js, modifiez la fonction getImageUrl :
-getImageUrl: (imageData) => {
+  getImageUrl: (imageData) => {
     if (!imageData) return null;
-    
+
     // Si thumbnailBase64 existe
     if (imageData.thumbnailBase64) {
       let base64Data = imageData.thumbnailBase64;
@@ -346,7 +355,7 @@ getImageUrl: (imageData) => {
       }
       return base64Data;
     }
-    
+
     // Sinon utiliser base64 principal
     if (imageData.base64) {
       let base64Data = imageData.base64;
@@ -355,7 +364,7 @@ getImageUrl: (imageData) => {
       }
       return base64Data;
     }
-    
+
     return null;
   },
 
@@ -393,7 +402,7 @@ export const uploadService = {
       return response.data;
     } catch (error) {
       console.error('❌ Erreur uploadImages:', error);
-      throw error.response?.data || { 
+      throw error.response?.data || {
         message: 'Erreur lors de l\'upload'
       };
     }
@@ -414,27 +423,27 @@ export const uploadService = {
     return new Promise((resolve) => {
       const img = new Image();
       img.src = URL.createObjectURL(file);
-      
+
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        
+
         // Calculer les nouvelles dimensions
         let width = img.width;
         let height = img.height;
-        
+
         if (width > maxWidth) {
           const ratio = maxWidth / width;
           width = maxWidth;
           height = height * ratio;
         }
-        
+
         canvas.width = width;
         canvas.height = height;
-        
+
         // Dessiner l'image redimensionnée
         ctx.drawImage(img, 0, 0, width, height);
-        
+
         // Convertir en blob
         canvas.toBlob(
           (blob) => {
@@ -447,11 +456,11 @@ export const uploadService = {
           'image/jpeg',
           quality
         );
-        
+
         // Libérer l'URL
         URL.revokeObjectURL(img.src);
       };
-      
+
       img.onerror = () => resolve(file); // Retourner l'original en cas d'erreur
     });
   }

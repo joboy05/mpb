@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, ArrowRight, Check, Phone, Loader, Shield, CheckCircle } from 'lucide-react';
+import { UserPlus, ArrowRight, Check, Phone, Loader, Shield, CheckCircle, Mail, Eye, EyeOff } from 'lucide-react';
 import CountrySelect from './CountrySelect';
 import BeninLocation from './BeninLocation';
 import { authService } from '../../services/api';
 
 const MemberForm = () => {
   const navigate = useNavigate();
-  
+
   const [formData, setFormData] = useState({
     nom: '',
     prenom: '',
@@ -28,6 +28,8 @@ const MemberForm = () => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
@@ -74,23 +76,23 @@ const MemberForm = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     // Validation nom
     if (!formData.nom.trim()) newErrors.nom = 'Le nom est requis';
     else if (formData.nom.trim().length < 2) newErrors.nom = 'Minimum 2 caractères';
-    
+
     // Validation prénom
     if (!formData.prenom.trim()) newErrors.prenom = 'Le prénom est requis';
     else if (formData.prenom.trim().length < 2) newErrors.prenom = 'Minimum 2 caractères';
-    
+
     // Validation email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email.trim()) newErrors.email = 'L\'email est requis';
     else if (!emailRegex.test(formData.email)) newErrors.email = 'Format d\'email invalide';
-    
+
     // Validation téléphone
     if (!formData.telephone.trim()) newErrors.telephone = 'Le téléphone est requis';
-    
+
     // Validation âge (CHANGÉ)
     if (!formData.age) newErrors.age = 'L\'âge est requis';
     else {
@@ -99,7 +101,7 @@ const MemberForm = () => {
         newErrors.age = 'Âge invalide (16-100 ans)';
       }
     }
-    
+
     // Validation localisation
     if (formData.pays === 'Bénin') {
       if (!formData.departement) newErrors.departement = 'Le département est requis';
@@ -107,24 +109,24 @@ const MemberForm = () => {
     } else if (!formData.commune.trim()) {
       newErrors.commune = 'La ville/région est requise';
     }
-    
+
     // Validation profession et disponibilité
     if (!formData.profession) newErrors.profession = 'La profession est requise';
     if (!formData.disponibilite) newErrors.disponibilite = 'La disponibilité est requise';
-    
+
     // Validation mots de passe
     if (!formData.password) newErrors.password = 'Le mot de passe est requis';
     else if (formData.password.length < 8) newErrors.password = 'Minimum 8 caractères';
-    
+
     if (!formData.confirmPassword) newErrors.confirmPassword = 'Confirmation requise';
     else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Les mots de passe ne correspondent pas';
     }
-    
+
     // Validation motivation
     if (!formData.motivation.trim()) newErrors.motivation = 'La motivation est requise';
     else if (formData.motivation.trim().length < 20) newErrors.motivation = 'Minimum 20 caractères';
-    
+
     // Validation consentements (NOUVEAU)
     if (!formData.engagement_valeurs_mpb) {
       newErrors.engagement_valeurs_mpb = 'Vous devez accepter les valeurs du MPB';
@@ -132,18 +134,18 @@ const MemberForm = () => {
     if (!formData.consentement_donnees) {
       newErrors.consentement_donnees = 'Vous devez consentir à l\'utilisation de vos données';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setLoading(true);
-    
+
     try {
       // Préparer les données pour l'API (avec les nouveaux champs)
       const memberData = {
@@ -163,22 +165,18 @@ const MemberForm = () => {
         consentement_donnees: formData.consentement_donnees, // NOUVEAU
         password: formData.password
       };
-      
+
       // Appel API avec Axios
       const result = await authService.register(memberData);
-      
-      // Sauvegarder le token et les données
-      authService.saveAuthData(result.token, result.member);
-      
-      // Message de succès
-      alert(`🎉 Inscription réussie !\nBienvenue ${result.member.prenom} !\nNuméro de membre: ${result.member.memberId}`);
-      
-      // Rediriger vers la carte de membre
-      navigate('/carte-membre', { state: { memberData: result.member } });
-      
+      console.log('✅ Inscription réussie sur le serveur:', result);
+
+      // Afficher l'état de succès (Email envoyé)
+      setSuccess(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
     } catch (error) {
       console.error('Erreur inscription:', error);
-      
+
       // Gérer les erreurs spécifiques
       if (error.message?.includes('déjà utilisé') || error.message?.includes('email')) {
         setErrors({ email: 'Cet email est déjà utilisé' });
@@ -205,10 +203,36 @@ const MemberForm = () => {
     'Agriculteur', 'Artisan', 'Profession libérale', 'Retraité', 'Sans emploi', 'Autre'
   ];
 
+  if (success) {
+    return (
+      <div className="bg-white rounded-2xl shadow-xl p-12 border border-green-100 text-center animate-in fade-in zoom-in duration-500">
+        <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+          <Mail className="w-12 h-12 text-green-600 animate-bounce" />
+        </div>
+        <h2 className="text-3xl font-bold text-[#003366] mb-4">Inscription reçue !</h2>
+        <p className="text-lg text-gray-600 mb-8 leading-relaxed">
+          Un email de validation a été envoyé à <span className="font-bold text-[#003366]">{formData.email}</span>.<br />
+          Veuillez cliquer sur le lien dans l'email pour activer votre compte.
+        </p>
+        <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 mb-8">
+          <p className="text-sm text-blue-700">
+            Pensez à vérifier vos courriers indésirables (spams) si vous ne voyez rien d'ici 2 minutes.
+          </p>
+        </div>
+        <button
+          onClick={() => window.location.reload()}
+          className="text-[#003366] font-semibold hover:underline flex items-center gap-2 mx-auto"
+        >
+          Retour au formulaire
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-gradient-to-b from-white to-gray-50 rounded-2xl shadow-xl p-8 border border-gray-100 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-yellow-400/10 to-[#003366]/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-      
+
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-2xl font-bold text-[#003366] flex items-center gap-3">
@@ -223,25 +247,23 @@ const MemberForm = () => {
             🎯 Inscription
           </div>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Champs nom/prénom */}
           <div className="grid md:grid-cols-2 gap-4">
             <div className="group">
               <label className="block text-sm font-medium text-gray-700 mb-2">Nom *</label>
               <input type="text" name="nom" value={formData.nom} onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
-                  errors.nom ? 'border-red-300' : 'border-gray-300'
-                }`} placeholder="Votre nom" />
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${errors.nom ? 'border-red-300' : 'border-gray-300'
+                  }`} placeholder="Votre nom" />
               {errors.nom && <p className="mt-1 text-sm text-red-600">{errors.nom}</p>}
             </div>
-            
+
             <div className="group">
               <label className="block text-sm font-medium text-gray-700 mb-2">Prénom *</label>
               <input type="text" name="prenom" value={formData.prenom} onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
-                  errors.prenom ? 'border-red-300' : 'border-gray-300'
-                }`} placeholder="Votre prénom" />
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${errors.prenom ? 'border-red-300' : 'border-gray-300'
+                  }`} placeholder="Votre prénom" />
               {errors.prenom && <p className="mt-1 text-sm text-red-600">{errors.prenom}</p>}
             </div>
           </div>
@@ -250,9 +272,8 @@ const MemberForm = () => {
           <div className="group">
             <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
             <input type="email" name="email" value={formData.email} onChange={handleChange}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
-                errors.email ? 'border-red-300' : 'border-gray-300'
-              }`} placeholder="exemple@email.com" />
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${errors.email ? 'border-red-300' : 'border-gray-300'
+                }`} placeholder="exemple@email.com" />
             {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
           </div>
 
@@ -274,9 +295,8 @@ const MemberForm = () => {
               </div>
               <input type="tel" name="telephone" value={formData.telephone} onChange={handleChange}
                 placeholder="XX XX XX XX"
-                className={`flex-1 px-4 py-3 border rounded-r-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent ${
-                  errors.telephone ? 'border-red-300' : 'border-gray-300'
-                }`} />
+                className={`flex-1 px-4 py-3 border rounded-r-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent ${errors.telephone ? 'border-red-300' : 'border-gray-300'
+                  }`} />
             </div>
             {errors.telephone && <p className="mt-1 text-sm text-red-600">{errors.telephone}</p>}
           </div>
@@ -286,11 +306,10 @@ const MemberForm = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">Âge *</label>
             <input type="number" name="age" value={formData.age} onChange={handleChange}
               min="16" max="100"
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
-                errors.age ? 'border-red-300' : 'border-gray-300'
-              }`} placeholder="Votre âge" />
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${errors.age ? 'border-red-300' : 'border-gray-300'
+                }`} placeholder="Votre âge" />
             {errors.age && <p className="mt-1 text-sm text-red-600">{errors.age}</p>}
-            
+
             {formData.age && !errors.age && (
               <div className="mt-2 text-sm text-gray-600">
                 <span className="font-medium">Âge : </span>
@@ -322,9 +341,8 @@ const MemberForm = () => {
             <div className="group">
               <label className="block text-sm font-medium text-gray-700 mb-2">Ville/Région *</label>
               <input type="text" name="commune" value={formData.commune} onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
-                  errors.commune ? 'border-red-300' : 'border-gray-300'
-                }`} placeholder="Votre ville ou région" />
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${errors.commune ? 'border-red-300' : 'border-gray-300'
+                  }`} placeholder="Votre ville ou région" />
               {errors.commune && <p className="mt-1 text-sm text-red-600">{errors.commune}</p>}
             </div>
           )}
@@ -334,9 +352,8 @@ const MemberForm = () => {
             <div className="group">
               <label className="block text-sm font-medium text-gray-700 mb-2">Profession *</label>
               <select name="profession" value={formData.profession} onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
-                  errors.profession ? 'border-red-300' : 'border-gray-300'
-                }`}>
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${errors.profession ? 'border-red-300' : 'border-gray-300'
+                  }`}>
                 <option value="">Sélectionnez...</option>
                 {professions.map(prof => (
                   <option key={prof} value={prof}>{prof}</option>
@@ -344,13 +361,12 @@ const MemberForm = () => {
               </select>
               {errors.profession && <p className="mt-1 text-sm text-red-600">{errors.profession}</p>}
             </div>
-            
+
             <div className="group">
               <label className="block text-sm font-medium text-gray-700 mb-2">Disponibilité *</label>
               <select name="disponibilite" value={formData.disponibilite} onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
-                  errors.disponibilite ? 'border-red-300' : 'border-gray-300'
-                }`}>
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${errors.disponibilite ? 'border-red-300' : 'border-gray-300'
+                  }`}>
                 <option value="">Choisir...</option>
                 {disponibilites.map(dispo => (
                   <option key={dispo} value={dispo}>{dispo}</option>
@@ -364,19 +380,28 @@ const MemberForm = () => {
           <div className="grid md:grid-cols-2 gap-4">
             <div className="group">
               <label className="block text-sm font-medium text-gray-700 mb-2">Mot de passe *</label>
-              <input type="password" name="password" value={formData.password} onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
-                  errors.password ? 'border-red-300' : 'border-gray-300'
-                }`} placeholder="Minimum 8 caractères" />
+              <div className="relative">
+                <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${errors.password ? 'border-red-300' : 'border-gray-300'
+                    }`} placeholder="Minimum 8 caractères" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#003366]"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
               {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
             </div>
-            
+
             <div className="group">
               <label className="block text-sm font-medium text-gray-700 mb-2">Confirmation *</label>
-              <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${
-                  errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-                }`} placeholder="Retapez votre mot de passe" />
+              <div className="relative">
+                <input type={showPassword ? "text" : "password"} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent transition-colors ${errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
+                    }`} placeholder="Retapez votre mot de passe" />
+              </div>
               {errors.confirmPassword && <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>}
             </div>
           </div>
@@ -385,25 +410,22 @@ const MemberForm = () => {
           <div className="group">
             <label className="block text-sm font-medium text-gray-700 mb-2">Motivation *</label>
             <textarea name="motivation" value={formData.motivation} onChange={handleChange} rows="4"
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent resize-none transition-colors ${
-                errors.motivation ? 'border-red-300' : 'border-gray-300'
-              }`} placeholder="Pourquoi souhaitez-vous rejoindre le Mouvement Patriotique du Bénin ?" />
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:border-transparent resize-none transition-colors ${errors.motivation ? 'border-red-300' : 'border-gray-300'
+                }`} placeholder="Pourquoi souhaitez-vous rejoindre le Mouvement Patriotique du Bénin ?" />
             <div className="flex justify-between items-center mt-1">
               <p className="text-sm text-gray-500">Minimum 20 caractères</p>
-              <p className={`text-sm ${
-                formData.motivation.length < 20 ? 'text-red-600' : 'text-green-600'
-              }`}>{formData.motivation.length}/20</p>
+              <p className={`text-sm ${formData.motivation.length < 20 ? 'text-red-600' : 'text-green-600'
+                }`}>{formData.motivation.length}/20</p>
             </div>
             {errors.motivation && <p className="mt-1 text-sm text-red-600">{errors.motivation}</p>}
           </div>
 
           {/* Consentements (NOUVEAU) */}
           <div className="space-y-4">
-            <div className={`p-4 rounded-lg border transition-colors ${
-              errors.engagement_valeurs_mpb ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'
-            }`}>
+            <div className={`p-4 rounded-lg border transition-colors ${errors.engagement_valeurs_mpb ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'
+              }`}>
               <div className="flex items-start gap-3">
-                <input type="checkbox" id="engagement_valeurs_mpb" 
+                <input type="checkbox" id="engagement_valeurs_mpb"
                   name="engagement_valeurs_mpb"
                   checked={formData.engagement_valeurs_mpb}
                   onChange={handleChange}
@@ -414,7 +436,7 @@ const MemberForm = () => {
                     Engagement aux valeurs du MPB *
                   </label>
                   <p className="text-sm text-gray-600 mt-1">
-                    Je m'engage à respecter et promouvoir les valeurs du Mouvement Patriotique du Bénin : 
+                    Je m'engage à respecter et promouvoir les valeurs du Mouvement Patriotique du Bénin :
                     Patrie, Jeunesse, Pouvoir, Intégrité et Développement.
                   </p>
                 </div>
@@ -423,12 +445,11 @@ const MemberForm = () => {
                 <p className="mt-2 text-sm text-red-600">{errors.engagement_valeurs_mpb}</p>
               )}
             </div>
-            
-            <div className={`p-4 rounded-lg border transition-colors ${
-              errors.consentement_donnees ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'
-            }`}>
+
+            <div className={`p-4 rounded-lg border transition-colors ${errors.consentement_donnees ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'
+              }`}>
               <div className="flex items-start gap-3">
-                <input type="checkbox" id="consentement_donnees" 
+                <input type="checkbox" id="consentement_donnees"
                   name="consentement_donnees"
                   checked={formData.consentement_donnees}
                   onChange={handleChange}
@@ -439,7 +460,7 @@ const MemberForm = () => {
                     Consentement à l'utilisation des données *
                   </label>
                   <p className="text-sm text-gray-600 mt-1">
-                    Je consens à ce que mes informations personnelles soient utilisées uniquement 
+                    Je consens à ce que mes informations personnelles soient utilisées uniquement
                     pour mon adhésion au mouvement, la communication interne et les activités du MPB.
                     Mes données seront protégées conformément à la loi sur la protection des données.
                   </p>
